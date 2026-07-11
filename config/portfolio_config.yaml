@@ -1,0 +1,70 @@
+# config/portfolio_config.yaml
+# =============================================
+# YOUR PORTFOLIO CONFIGURATION
+# Edit this file with your real holdings.
+# This is the ONLY file you need to change.
+# =============================================
+
+budget:
+  monthly_amount: 1500.00
+  currency: "USD"
+  # No single buy should exceed this % of monthly budget
+  max_single_position_pct: 0.40
+
+holdings:
+  - ticker: "VOO"
+    shares: 15
+    avg_cost_per_share: 485.00
+
+  - ticker: "QQQM"
+    shares: 12
+    avg_cost_per_share: 175.00
+
+  - ticker: "SPMO"
+    shares: 20
+    avg_cost_per_share: 72.00
+
+  - ticker: "GLD"
+    shares: 8
+    avg_cost_per_share: 215.00
+
+  - ticker: "SCHD"
+    shares: 25
+    avg_cost_per_share: 76.00
+
+  - ticker: "AAPL"
+    shares: 10
+    avg_cost_per_share: 178.00
+
+  - ticker: "MSFT"
+    shares: 5
+    avg_cost_per_share: 380.00
+
+  - ticker: "AMZN"
+    shares: 8
+    avg_cost_per_share: 170.00
+
+# Must sum to 100
+target_allocation:
+  VOO: 25
+  QQQM: 15
+  SPMO: 12
+  GLD: 10
+  SCHD: 13
+  AAPL: 8
+  MSFT: 7
+  AMZN: 10
+
+strategy: "weighted_dca"
+
+llm:
+  provider: "groq"
+  model: "llama-3.1-8b-instant"
+
+notifications:
+  telegram:
+    enabled: true
+
+schedule:
+  payday: 15
+  max_wait_days: 10

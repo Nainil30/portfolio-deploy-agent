@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "portfolio-deploy-agent"
+version = "0.1.0"
+description = "AI-powered portfolio deployment agent using LangGraph"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-groq>=0.2.0",
+    "yfinance>=0.2.40",
+    # "pandas-ta>=0.3.14b",
+    "pandas>=2.1.0",
+    "pydantic>=2.0",
+    "streamlit>=1.35.0",
+    "plotly>=5.20.0",
+    "python-telegram-bot>=21.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5.0",
+]
+
+# THIS IS THE FIX — tells hatchling where your code lives
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
