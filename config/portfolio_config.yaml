@@ -1,59 +1,80 @@
 # config/portfolio_config.yaml
 # =============================================
 # YOUR PORTFOLIO CONFIGURATION
-# Edit this file with your real holdings.
-# This is the ONLY file you need to change.
 # =============================================
 
 budget:
   monthly_amount: 1500.00
   currency: "USD"
-  # No single buy should exceed this % of monthly budget
   max_single_position_pct: 0.40
 
 holdings:
   - ticker: "VOO"
     shares: 15
     avg_cost_per_share: 485.00
+    category: "etf"
 
   - ticker: "QQQM"
     shares: 12
     avg_cost_per_share: 175.00
+    category: "etf"
 
   - ticker: "SPMO"
     shares: 20
     avg_cost_per_share: 72.00
-
-  - ticker: "GLD"
-    shares: 8
-    avg_cost_per_share: 215.00
+    category: "etf"
 
   - ticker: "SCHD"
     shares: 25
     avg_cost_per_share: 76.00
+    category: "etf"
+
+  - ticker: "GLD"
+    shares: 8
+    avg_cost_per_share: 215.00
+    category: "gold"
 
   - ticker: "AAPL"
     shares: 10
     avg_cost_per_share: 178.00
+    category: "stocks"
 
   - ticker: "MSFT"
     shares: 5
     avg_cost_per_share: 380.00
+    category: "stocks"
 
   - ticker: "AMZN"
     shares: 8
     avg_cost_per_share: 170.00
+    category: "stocks"
 
-# Must sum to 100
-target_allocation:
-  VOO: 25
-  QQQM: 15
-  SPMO: 12
-  GLD: 10
-  SCHD: 13
-  AAPL: 8
-  MSFT: 7
-  AMZN: 10
+# ─── ALLOCATION TARGETS ───────────────────────
+# 
+# OPTION A: Category-level targets (RECOMMENDED)
+# Just say what % goes to each category.
+# Within each category, money is split equally 
+# among the tickers, adjusted by market scores.
+# Must sum to 100.
+#
+# OPTION B: Ticker-level targets 
+# Uncomment target_allocation section below for precise control.
+
+category_targets:
+  etf: 60
+  stocks: 30
+  gold: 10
+
+# Uncomment below to use ticker-level targets instead:
+# target_allocation:
+#   VOO: 20
+#   QQQM: 15
+#   SPMO: 12
+#   SCHD: 13
+#   GLD: 10
+#   AAPL: 10
+#   MSFT: 10
+#   AMZN: 10
 
 strategy: "weighted_dca"
 

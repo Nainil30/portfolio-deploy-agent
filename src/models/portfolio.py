@@ -3,10 +3,15 @@
 Data structures for the entire application.
 
 WHY PYDANTIC:
-Regular dicts break silently. You pass a dict missing a key, code
-crashes later with a confusing KeyError. Pydantic catches this at
-creation time with a clear error message. Essential when agents
-pass data to each other.
+Regular dicts break silently. Pydantic catches missing or
+wrong-type fields at creation time with clear error messages.
+Essential when agents pass data to each other.
+
+NOTE ON DOLLAR-BASED DESIGN:
+All recommendations are in dollar amounts, not share counts.
+This matches how Fidelity works — you enter "$500 into VOO"
+and Fidelity buys fractional shares automatically.
+No rounding waste. Every dollar gets deployed.
 """
 
 from datetime import datetime
@@ -48,10 +53,19 @@ class TickerScore(BaseModel):
 
 
 class BuyRecommendation(BaseModel):
-    """One buy instruction."""
+    """
+    One buy instruction in DOLLAR terms.
+    
+    WHY DOLLARS NOT SHARES:
+    Fidelity lets you buy by dollar amount. You type "$500 into VOO"
+    and Fidelity figures out the fractional shares. This means:
+    - No rounding waste (every dollar deployed)
+    - Matches your actual workflow
+    - Simpler math (no floor division edge cases)
+    """
     ticker: str
-    shares_to_buy: int = Field(ge=0)
-    estimated_cost: float
+    dollar_amount: float = Field(ge=0, description="How much money to put into this ticker")
+    pct_of_budget: float = Field(ge=0, description="What % of monthly budget this represents")
     reasoning: str
 
 

@@ -34,3 +34,7 @@ dev = [
 # THIS IS THE FIX — tells hatchling where your code lives
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

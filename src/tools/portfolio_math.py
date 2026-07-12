@@ -1,12 +1,13 @@
+
 # src/tools/portfolio_math.py
 """
-Pure math functions. No network calls. No LLM. No side effects.
-Input data in, numbers out. Easy to test, easy to trust.
+Pure math functions for portfolio analysis and dollar-based deployment.
 
-WHY SEPARATE FROM MARKET DATA:
-market_data.py fetches from the internet (can fail, is slow).
-This file does instant math on data already fetched.
-Different responsibilities, different failure modes.
+KEY DESIGN DECISIONS:
+1. All recommendations in dollar amounts (matches Fidelity)
+2. Supports category-level targets (ETF: 60%, Stocks: 30%, Gold: 10%)
+3. Position caps strictly enforced — excess becomes cash
+4. No network calls, no LLM, no side effects
 """
 
 from src.models.portfolio import (
@@ -44,7 +45,6 @@ def build_portfolio_state(
             target_pct=targets.get(t, 0.0),
         ))
 
-    # Calculate percentages and drift
     for h in holdings:
         if total_value > 0:
             h.actual_pct = round(h.current_value / total_value * 100, 2)
@@ -67,15 +67,16 @@ def generate_deployment_plan(
     max_single_pct: float = 0.40,
 ) -> DeploymentPlan:
     """
-    Decide how to split the monthly budget across holdings.
+    Split monthly budget across holdings IN DOLLARS.
 
     STRATEGY: Weighted DCA with rebalance tilt.
-    - Underweight positions get more money
-    - Higher market scores (cheaper/oversold) get a bonus
-    - Overweight positions are skipped
-    - No single buy exceeds max_single_pct of budget
 
-    The weights are: 70% allocation need + 30% market attractiveness
+    STEPS:
+    1. Score each position by: 70% underweight need + 30% market score
+    2. Skip overweight positions (drift > +2%)
+    3. Convert weights to dollar amounts
+    4. Hard cap each position at max_single_pct of budget
+    5. Excess that cannot be redistributed becomes cash
     """
     max_single = budget * max_single_pct
     candidates = []
@@ -85,30 +86,26 @@ def generate_deployment_plan(
         if not score or score.current_price <= 0:
             continue
 
-        # Skip overweight positions (drift > +2%)
+        # Skip overweight positions
         if h.drift > 2:
             continue
 
-        # How underweight is this position (negative drift → positive need)
         need = max(0, -h.drift)
-        attractiveness = score.score / 10  # Normalize 0 to 1
-
-        # Combined weight
+        attractiveness = score.score / 10
         weight = (need * 0.7) + (attractiveness * 0.3)
 
-        # Even on-target positions get a small weight for DCA
+        # Even on-target positions get small weight for steady DCA
         if weight == 0:
             weight = 0.1
 
         candidates.append({
             "ticker": h.ticker,
             "weight": weight,
-            "price": score.current_price,
             "score": score.score,
             "drift": h.drift,
+            "price": score.current_price,
         })
 
-    # Handle edge case: nothing to buy
     if not candidates:
         return DeploymentPlan(
             date=str(portfolio.timestamp.date()),
@@ -119,33 +116,59 @@ def generate_deployment_plan(
             summary="All positions overweight. Hold cash.",
         )
 
-    # Normalize weights and allocate budget
+    # Normalize weights to dollar amounts
     total_weight = sum(c["weight"] for c in candidates)
     for c in candidates:
-        raw_allocation = (c["weight"] / total_weight) * budget
-        c["allocation"] = min(raw_allocation, max_single)
+        c["dollars"] = (c["weight"] / total_weight) * budget
 
-    # Convert to whole shares, highest priority first
-    candidates.sort(key=lambda x: x["weight"], reverse=True)
+    # Apply cap — multiple passes to handle redistribution
+    for _ in range(5):
+        excess = 0.0
+        uncapped_weight = 0.0
+
+        # Find who is over the cap
+        for c in candidates:
+            if c["dollars"] > max_single:
+                excess += c["dollars"] - max_single
+                c["dollars"] = max_single
+                c["capped"] = True
+            else:
+                c["capped"] = False
+                uncapped_weight += c["weight"]
+
+        # If no excess or nobody to absorb it, stop
+        if excess <= 0 or uncapped_weight <= 0:
+            break
+
+        # Redistribute excess to uncapped positions
+        for c in candidates:
+            if not c["capped"]:
+                c["dollars"] += (c["weight"] / uncapped_weight) * excess
+
+    # Build final recommendations
+    candidates.sort(key=lambda c: c["weight"], reverse=True)
     recommendations = []
-    spent = 0.0
+    total_allocated = 0.0
 
     for c in candidates:
-        remaining = budget - spent
-        allocation = min(c["allocation"], remaining)
-        shares = int(allocation // c["price"])
+        # FINAL SAFETY: never exceed cap regardless of redistribution
+        dollars = round(min(c["dollars"], max_single))
 
-        if shares <= 0:
+        if dollars < 10:
             continue
 
-        cost = round(shares * c["price"], 2)
-        spent += cost
+        if total_allocated + dollars > budget:
+            dollars = round(budget - total_allocated)
+            if dollars < 10:
+                continue
+
+        total_allocated += dollars
 
         recommendations.append(BuyRecommendation(
             ticker=c["ticker"],
-            shares_to_buy=shares,
-            estimated_cost=cost,
-            reasoning=f"Drift {c['drift']:+.1f}%, Score {c['score']}/10",
+            dollar_amount=dollars,
+            pct_of_budget=round(dollars / budget * 100, 1),
+            reasoning=f"Drift {c['drift']:+.1f}%, Score {c['score']}/10, ${c['price']:.2f}/share",
         ))
 
     return DeploymentPlan(
@@ -153,5 +176,5 @@ def generate_deployment_plan(
         budget=budget,
         strategy="weighted_dca",
         recommendations=recommendations,
-        cash_remaining=round(budget - spent, 2),
+        cash_remaining=round(budget - total_allocated, 2),
     )
