@@ -1,0 +1,14 @@
+{
+    "name": "Portfolio Deploy Agent",
+    "image": "mcr.microsoft.com/devcontainers/python:3.12",
+    "postCreateCommand": "pip install -e '.[dev]' && cp config/portfolio_config.example.yaml config/portfolio_config.yaml && cp .env.example .env",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "charliermarsh.ruff"
+            ]
+        }
+    },
+    "forwardPorts": [8501]
+}

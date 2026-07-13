@@ -2,16 +2,15 @@
 """
 Data structures for the entire application.
 
-WHY PYDANTIC:
-Regular dicts break silently. Pydantic catches missing or
-wrong-type fields at creation time with clear error messages.
-Essential when agents pass data to each other.
-
-NOTE ON DOLLAR-BASED DESIGN:
+DOLLAR-BASED DESIGN:
 All recommendations are in dollar amounts, not share counts.
-This matches how Fidelity works — you enter "$500 into VOO"
-and Fidelity buys fractional shares automatically.
-No rounding waste. Every dollar gets deployed.
+Matches how Fidelity works — you enter "$500 into VOO".
+
+TRANCHE DESIGN:
+Monthly budget is split into up to 3 tranches:
+  Tranche 1: Deploy immediately on payday (60%)
+  Tranche 2: Reserve for dip buying (25%)
+  Tranche 3: Reserve for deep dip buying (15%)
 """
 
 from datetime import datetime
@@ -27,7 +26,6 @@ class Holding(BaseModel):
     current_value: float = 0.0
     target_pct: float
     actual_pct: float = 0.0
-    # Negative drift = underweight = should buy more
     drift: float = 0.0
 
 
@@ -53,27 +51,30 @@ class TickerScore(BaseModel):
 
 
 class BuyRecommendation(BaseModel):
-    """
-    One buy instruction in DOLLAR terms.
-    
-    WHY DOLLARS NOT SHARES:
-    Fidelity lets you buy by dollar amount. You type "$500 into VOO"
-    and Fidelity figures out the fractional shares. This means:
-    - No rounding waste (every dollar deployed)
-    - Matches your actual workflow
-    - Simpler math (no floor division edge cases)
-    """
+    """One buy instruction in DOLLAR terms."""
     ticker: str
-    dollar_amount: float = Field(ge=0, description="How much money to put into this ticker")
-    pct_of_budget: float = Field(ge=0, description="What % of monthly budget this represents")
+    dollar_amount: float = Field(ge=0)
+    pct_of_budget: float = Field(ge=0)
     reasoning: str
 
 
+class DipAlert(BaseModel):
+    """A dip detected on a ticker — potential buy signal."""
+    ticker: str
+    current_price: float
+    sma_20: float
+    drop_from_sma_pct: float
+    score: int
+    is_deep_dip: bool
+
+
 class DeploymentPlan(BaseModel):
-    """Complete monthly deployment recommendation."""
+    """Complete deployment recommendation for a tranche."""
     date: str
     budget: float
     strategy: str
+    tranche: str = "full"       # "full", "immediate", "dip_reserve", "deep_dip_reserve"
     recommendations: list[BuyRecommendation]
     cash_remaining: float = Field(ge=0)
     summary: str = ""
+    dip_alerts: list[DipAlert] = []

@@ -1,0 +1,73 @@
+budget:
+  monthly_amount: 1500.00
+  currency: "USD"
+  max_single_position_pct: 0.40
+
+strategy: "split_tranches"
+
+tranches:
+  immediate_pct: 60
+  dip_reserve_pct: 25
+  deep_dip_reserve_pct: 15
+  dip_threshold_pct: 2.0
+  deep_dip_threshold_pct: 3.5
+  dip_deadline_day: 20
+  final_deadline_day: 28
+
+schedule:
+  payday: 15
+  pay_frequency: "biweekly"
+
+holdings:
+  - ticker: "VOO"
+    shares: 15
+    avg_cost_per_share: 485.00
+    category: "etf"
+
+  - ticker: "QQQM"
+    shares: 12
+    avg_cost_per_share: 175.00
+    category: "etf"
+
+  - ticker: "SPMO"
+    shares: 20
+    avg_cost_per_share: 72.00
+    category: "etf"
+
+  - ticker: "SCHD"
+    shares: 25
+    avg_cost_per_share: 76.00
+    category: "etf"
+
+  - ticker: "GLD"
+    shares: 8
+    avg_cost_per_share: 215.00
+    category: "gold"
+
+  - ticker: "AAPL"
+    shares: 10
+    avg_cost_per_share: 178.00
+    category: "stocks"
+
+  - ticker: "MSFT"
+    shares: 5
+    avg_cost_per_share: 380.00
+    category: "stocks"
+
+  - ticker: "AMZN"
+    shares: 8
+    avg_cost_per_share: 170.00
+    category: "stocks"
+
+category_targets:
+  etf: 60
+  stocks: 30
+  gold: 10
+
+llm:
+  provider: "groq"
+  model: "llama-3.1-8b-instant"
+
+notifications:
+  telegram:
+    enabled: true

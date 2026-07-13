@@ -1,82 +1,88 @@
-# config/portfolio_config.yaml
-# =============================================
-# YOUR PORTFOLIO CONFIGURATION
-# =============================================
 
 budget:
   monthly_amount: 1500.00
   currency: "USD"
   max_single_position_pct: 0.40
 
+strategy: "split_tranches"
+
+tranches:
+  immediate_pct: 60
+  dip_reserve_pct: 25
+  deep_dip_reserve_pct: 15
+  dip_threshold_pct: 2.0
+  deep_dip_threshold_pct: 3.5
+  dip_deadline_day: 20
+  final_deadline_day: 28
+
+schedule:
+  payday: 17
+  pay_frequency: "biweekly"
+
+# ─── YOUR REAL HOLDINGS ─────────────────────────
+# Open Fidelity → Accounts & Trade → Portfolio
+# For each position, enter:
+#   ticker: exact symbol
+#   shares: from "Quantity" column
+#   avg_cost_per_share: from "Cost Basis/Share" (click position → Lots)
+#   category: your label (etf, stocks, gold, bonds, crypto, reit, etc.)
+
 holdings:
+  # ── ETFs ──
   - ticker: "VOO"
-    shares: 15
-    avg_cost_per_share: 485.00
+    shares: 0          # ← Replace with your real share count
+    avg_cost_per_share: 0    # ← Replace with your real cost basis
     category: "etf"
 
   - ticker: "QQQM"
-    shares: 12
-    avg_cost_per_share: 175.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "etf"
 
   - ticker: "SPMO"
-    shares: 20
-    avg_cost_per_share: 72.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "etf"
 
   - ticker: "SCHD"
-    shares: 25
-    avg_cost_per_share: 76.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "etf"
 
+  # ── Gold ──
   - ticker: "GLD"
-    shares: 8
-    avg_cost_per_share: 215.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "gold"
 
+  # ── Stocks ──
   - ticker: "AAPL"
-    shares: 10
-    avg_cost_per_share: 178.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "stocks"
 
   - ticker: "MSFT"
-    shares: 5
-    avg_cost_per_share: 380.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "stocks"
 
   - ticker: "AMZN"
-    shares: 8
-    avg_cost_per_share: 170.00
+    shares: 0
+    avg_cost_per_share: 0
     category: "stocks"
 
-# ─── ALLOCATION TARGETS ───────────────────────
-# 
-# OPTION A: Category-level targets (RECOMMENDED)
-# Just say what % goes to each category.
-# Within each category, money is split equally 
-# among the tickers, adjusted by market scores.
-# Must sum to 100.
-#
-# OPTION B: Ticker-level targets 
-# Uncomment target_allocation section below for precise control.
+  # Add more positions below...
+  # - ticker: "GOOGL"
+  #   shares: 0
+  #   avg_cost_per_share: 0
+  #   category: "stocks"
 
+# ─── YOUR ALLOCATION TARGETS ────────────────────
+# Must sum to 100
 category_targets:
   etf: 60
   stocks: 30
   gold: 10
-
-# Uncomment below to use ticker-level targets instead:
-# target_allocation:
-#   VOO: 20
-#   QQQM: 15
-#   SPMO: 12
-#   SCHD: 13
-#   GLD: 10
-#   AAPL: 10
-#   MSFT: 10
-#   AMZN: 10
-
-strategy: "weighted_dca"
 
 llm:
   provider: "groq"
@@ -84,8 +90,4 @@ llm:
 
 notifications:
   telegram:
-    enabled: true
-
-schedule:
-  payday: 15
-  max_wait_days: 10
+    enabled: true7

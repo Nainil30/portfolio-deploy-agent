@@ -1,18 +1,21 @@
-
 # src/tools/portfolio_math.py
 """
 Pure math functions for portfolio analysis and dollar-based deployment.
 
-KEY DESIGN DECISIONS:
-1. All recommendations in dollar amounts (matches Fidelity)
-2. Supports category-level targets (ETF: 60%, Stocks: 30%, Gold: 10%)
-3. Position caps strictly enforced — excess becomes cash
-4. No network calls, no LLM, no side effects
+TRANCHE SUPPORT:
+  The monthly budget can be deployed as:
+  - "lump_sum": Everything at once (simple)
+  - "split_tranches": 60/25/15 split over the month
+
+  When using tranches, this module generates plans for
+  each tranche independently. The tranche budget is passed
+  in — this module does not care which tranche it is.
+  It just optimally deploys whatever budget it receives.
 """
 
 from src.models.portfolio import (
     Holding, PortfolioState, TickerScore,
-    BuyRecommendation, DeploymentPlan,
+    BuyRecommendation, DeploymentPlan, DipAlert,
 )
 
 
@@ -21,10 +24,7 @@ def build_portfolio_state(
     targets: dict[str, float],
     prices: dict[str, float],
 ) -> PortfolioState:
-    """
-    Combine config + live prices into a full portfolio snapshot.
-    Computes allocation percentages and drift for every holding.
-    """
+    """Combine config + live prices into full portfolio snapshot."""
     holdings = []
     total_value = 0.0
     total_cost = 0.0
@@ -60,41 +60,90 @@ def build_portfolio_state(
     )
 
 
+def detect_dips(
+    scores: dict[str, TickerScore],
+    dip_threshold: float = 2.0,
+    deep_dip_threshold: float = 3.5,
+) -> list[DipAlert]:
+    """
+    Scan all scored tickers for dip opportunities.
+
+    A "dip" = price is X% below the 20-day SMA.
+    A "deep dip" = price is Y% below the 20-day SMA.
+
+    WHY 20-DAY SMA:
+    Short enough to reflect recent price action.
+    Long enough to smooth out single-day noise.
+    A stock trading 3% below its 20-day average is
+    meaningfully cheaper than recent history.
+    """
+    dips = []
+    for ticker, s in scores.items():
+        if s.sma_20 <= 0 or s.current_price <= 0:
+            continue
+
+        drop_pct = ((s.current_price - s.sma_20) / s.sma_20) * 100
+
+        # Only negative drops are dips
+        if drop_pct >= -dip_threshold:
+            continue
+
+        dips.append(DipAlert(
+            ticker=ticker,
+            current_price=s.current_price,
+            sma_20=s.sma_20,
+            drop_from_sma_pct=round(drop_pct, 1),
+            score=s.score,
+            is_deep_dip=drop_pct <= -deep_dip_threshold,
+        ))
+
+    # Sort by biggest drop first
+    dips.sort(key=lambda d: d.drop_from_sma_pct)
+    return dips
+
+
 def generate_deployment_plan(
     portfolio: PortfolioState,
     scores: dict[str, TickerScore],
     budget: float,
     max_single_pct: float = 0.40,
+    tranche: str = "full",
+    target_tickers: list[str] | None = None,
 ) -> DeploymentPlan:
     """
-    Split monthly budget across holdings IN DOLLARS.
+    Split a budget across holdings in dollar amounts.
+
+    PARAMS:
+      portfolio:      Current portfolio state with drift
+      scores:         Market attractiveness scores
+      budget:         Dollar amount to deploy THIS tranche
+      max_single_pct: Cap per position (fraction of THIS tranche budget)
+      tranche:        Label: "full", "immediate", "dip_reserve", "deep_dip_reserve"
+      target_tickers: If set, only deploy into these tickers (for dip buying)
 
     STRATEGY: Weighted DCA with rebalance tilt.
-
-    STEPS:
-    1. Score each position by: 70% underweight need + 30% market score
-    2. Skip overweight positions (drift > +2%)
-    3. Convert weights to dollar amounts
-    4. Hard cap each position at max_single_pct of budget
-    5. Excess that cannot be redistributed becomes cash
+    70% weight from allocation need + 30% from market attractiveness.
     """
     max_single = budget * max_single_pct
     candidates = []
 
     for h in portfolio.holdings:
+        # If targeting specific tickers (dip buy), only consider those
+        if target_tickers and h.ticker not in target_tickers:
+            continue
+
         score = scores.get(h.ticker)
         if not score or score.current_price <= 0:
             continue
 
-        # Skip overweight positions
-        if h.drift > 2:
+        # Skip overweight positions (unless specifically targeted for dip buy)
+        if h.drift > 2 and not target_tickers:
             continue
 
         need = max(0, -h.drift)
         attractiveness = score.score / 10
         weight = (need * 0.7) + (attractiveness * 0.3)
 
-        # Even on-target positions get small weight for steady DCA
         if weight == 0:
             weight = 0.1
 
@@ -111,9 +160,10 @@ def generate_deployment_plan(
             date=str(portfolio.timestamp.date()),
             budget=budget,
             strategy="weighted_dca",
+            tranche=tranche,
             recommendations=[],
             cash_remaining=budget,
-            summary="All positions overweight. Hold cash.",
+            summary="No buy candidates found.",
         )
 
     # Normalize weights to dollar amounts
@@ -121,12 +171,11 @@ def generate_deployment_plan(
     for c in candidates:
         c["dollars"] = (c["weight"] / total_weight) * budget
 
-    # Apply cap — multiple passes to handle redistribution
+    # Apply cap with redistribution
     for _ in range(5):
         excess = 0.0
         uncapped_weight = 0.0
 
-        # Find who is over the cap
         for c in candidates:
             if c["dollars"] > max_single:
                 excess += c["dollars"] - max_single
@@ -136,38 +185,33 @@ def generate_deployment_plan(
                 c["capped"] = False
                 uncapped_weight += c["weight"]
 
-        # If no excess or nobody to absorb it, stop
         if excess <= 0 or uncapped_weight <= 0:
             break
 
-        # Redistribute excess to uncapped positions
         for c in candidates:
             if not c["capped"]:
                 c["dollars"] += (c["weight"] / uncapped_weight) * excess
 
-    # Build final recommendations
+    # Build recommendations
     candidates.sort(key=lambda c: c["weight"], reverse=True)
     recommendations = []
     total_allocated = 0.0
 
     for c in candidates:
-        # FINAL SAFETY: never exceed cap regardless of redistribution
         dollars = round(min(c["dollars"], max_single))
 
         if dollars < 10:
             continue
-
         if total_allocated + dollars > budget:
             dollars = round(budget - total_allocated)
             if dollars < 10:
                 continue
 
         total_allocated += dollars
-
         recommendations.append(BuyRecommendation(
             ticker=c["ticker"],
             dollar_amount=dollars,
-            pct_of_budget=round(dollars / budget * 100, 1),
+            pct_of_budget=round(dollars / budget * 100, 1) if budget > 0 else 0,
             reasoning=f"Drift {c['drift']:+.1f}%, Score {c['score']}/10, ${c['price']:.2f}/share",
         ))
 
@@ -175,6 +219,7 @@ def generate_deployment_plan(
         date=str(portfolio.timestamp.date()),
         budget=budget,
         strategy="weighted_dca",
+        tranche=tranche,
         recommendations=recommendations,
         cash_remaining=round(budget - total_allocated, 2),
     )

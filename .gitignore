@@ -38,3 +38,9 @@ desktop.ini
 # Test files (keep in repo but optional)
 test_*.py
 !tests/test_*.py
+
+
+# Real portfolio config (personal data)
+config/portfolio_config.yaml
+
+
