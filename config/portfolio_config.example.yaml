@@ -1,72 +1,336 @@
+# config/portfolio_config.example.yaml
+# ======================================================================
+# PORTFOLIO DEPLOYMENT AGENT — CONFIGURATION
+# ======================================================================
+#
+# FIRST TIME SETUP:
+#   1. Copy this file:
+#      cp config/portfolio_config.example.yaml config/portfolio_config.yaml
+#
+#   2. Edit portfolio_config.yaml with YOUR real data from Fidelity
+#
+#   3. portfolio_config.yaml is gitignored — your data stays private
+#
+# HOW TO FIND YOUR DATA IN FIDELITY:
+#   Log in → Accounts & Trade → Portfolio
+#   Ticker:     Symbol column (VOO, AAPL, etc.)
+#   Shares:     Quantity column
+#   Avg Cost:   Click position → Lots tab → Cost Basis Per Share
+#
+# ======================================================================
+
+
+# ──────────────────────────────────────────────────────────────────────
+# MONTHLY BUDGET
+# ──────────────────────────────────────────────────────────────────────
+# How much you invest each month from your salary.
+# The agent will split this amount across your holdings.
+
 budget:
+  # Total dollar amount to deploy each month
   monthly_amount: 1500.00
+
   currency: "USD"
+
+  # Maximum % of a single tranche that goes into one ticker.
+  # Prevents putting too much into one position.
+  #
+  # Example: If tranche is $900 and cap is 0.40,
+  #          no single ticker gets more than $360.
+  #
+  # Set to 1.0 if you do not want any cap.
   max_single_position_pct: 0.40
+
+
+# ──────────────────────────────────────────────────────────────────────
+# DEPLOYMENT STRATEGY
+# ──────────────────────────────────────────────────────────────────────
+# How the monthly budget gets deployed over the month.
+#
+# OPTIONS:
+#
+#   "lump_sum"
+#       Deploy the entire budget on payday in one shot.
+#       Simpler. Statistically wins 68% of the time (Vanguard study).
+#       Best if you do not want to check for dips during the month.
+#
+#   "split_tranches"
+#       Split the budget into 3 parts deployed at different times:
+#         - 60% on payday (get money working immediately)
+#         - 25% reserved for dips (buy when prices drop)
+#         - 15% reserved for deep dips (buy when prices drop a lot)
+#       You run the agent multiple times during the month.
+#       It tells you when to deploy each tranche.
+#       All money is deployed by month end — never rolls over.
 
 strategy: "split_tranches"
 
+
+# ──────────────────────────────────────────────────────────────────────
+# TRANCHE CONFIGURATION
+# ──────────────────────────────────────────────────────────────────────
+# Only used when strategy is "split_tranches".
+# Ignored when strategy is "lump_sum".
+#
+# The three percentages must sum to 100.
+
 tranches:
+  # ── Tranche 1: IMMEDIATE ──────────────────────────────────────────
+  # Deployed on payday. Gets your money working right away.
+  # This is your core DCA (dollar cost averaging).
+  # Recommended: 50-70%
   immediate_pct: 60
+
+  # ── Tranche 2: DIP RESERVE ────────────────────────────────────────
+  # Deployed when any of your positions drops X% below its
+  # 20-day simple moving average (SMA).
+  # If no dip happens, deployed anyway by the deadline day.
+  # Recommended: 20-30%
   dip_reserve_pct: 25
-  deep_dip_reserve_pct: 15
+
+  # What counts as a "dip" — percentage drop below 20-day SMA.
+  # 2.0 means the price is 2% cheaper than its recent 20-day average.
+  # Lower number = more frequent alerts (even small dips trigger).
+  # Higher number = fewer alerts (only meaningful dips trigger).
+  # Recommended: 1.5 to 3.0
   dip_threshold_pct: 2.0
-  deep_dip_threshold_pct: 3.5
+
+  # If no dip happens by this day of the month, deploy Tranche 2
+  # anyway into the most underweight positions.
+  # This ensures you never hold cash too long waiting for a dip
+  # that may not come.
+  # Recommended: 18-22
   dip_deadline_day: 20
+
+  # ── Tranche 3: DEEP DIP RESERVE ───────────────────────────────────
+  # Deployed when any position drops significantly.
+  # If no deep dip happens, deployed on the final deadline.
+  # This is your "dry powder" for real opportunities.
+  # Recommended: 10-20%
+  deep_dip_reserve_pct: 15
+
+  # What counts as a "deep dip" — bigger drop threshold.
+  # 3.5 means price is 3.5% below its 20-day SMA.
+  # These are less common but better buying opportunities.
+  # Recommended: 3.0 to 5.0
+  deep_dip_threshold_pct: 3.5
+
+  # Absolute last day to deploy remaining cash.
+  # After this day, any undeployed money goes into the most
+  # underweight positions regardless of dips.
+  # Never carry cash into the next month.
+  # Recommended: 26-28
   final_deadline_day: 28
 
+
+# ──────────────────────────────────────────────────────────────────────
+# SCHEDULE
+# ──────────────────────────────────────────────────────────────────────
+# When you get paid and when to start deploying.
+
 schedule:
+  # Day of the month you want to start deploying.
+  # This is when Tranche 1 gets deployed.
+  #
+  # If you get paid biweekly, update this each month:
+  #   July: 17, August: 14, September: 11, etc.
+  #
+  # The agent will not deploy Tranche 1 before this day.
   payday: 15
+
+  # Your pay frequency. Currently informational only.
+  # Future versions may auto-calculate payday from this.
+  # Options: "biweekly", "monthly", "semimonthly"
   pay_frequency: "biweekly"
 
+
+# ──────────────────────────────────────────────────────────────────────
+# YOUR HOLDINGS
+# ──────────────────────────────────────────────────────────────────────
+# Every position you own in your Fidelity account.
+#
+# Fields:
+#   ticker             Exact ticker symbol as shown in Fidelity
+#   shares             How many shares you own (decimals OK for fractional)
+#   avg_cost_per_share Your average cost basis per share
+#   category           Your own label for grouping:
+#                        "etf"     — index funds, sector ETFs
+#                        "stocks"  — individual company stocks
+#                        "gold"    — gold ETFs like GLD, IAU, IAUM
+#                        "bonds"   — bond ETFs like BND, AGG
+#                        "reit"    — real estate ETFs like VNQ
+#                        "crypto"  — crypto ETFs like IBIT
+#                        "intl"    — international ETFs like VXUS
+#                      You can use any label you want.
+#                      Just make sure it matches a category_targets entry.
+#
+# UPDATE AFTER BUYING:
+#   After each deployment, update your shares count.
+#   If you bought $400 of VOO at $693.86/share:
+#     New shares = old shares + (400 / 693.86) = old + 0.577
+#   Also update avg_cost_per_share from Fidelity Lots tab.
+
 holdings:
-  - ticker: "VOO"
-    shares: 15
-    avg_cost_per_share: 485.00
+  # ── ETFs ──────────────────────────────────────────────────────────
+  - ticker: "VOO"                    # Vanguard S&P 500 ETF
+    shares: 15.0                     # Your share count
+    avg_cost_per_share: 485.00       # Your cost basis
     category: "etf"
 
-  - ticker: "QQQM"
-    shares: 12
+  - ticker: "QQQM"                   # Invesco Nasdaq 100 ETF
+    shares: 12.0
     avg_cost_per_share: 175.00
     category: "etf"
 
-  - ticker: "SPMO"
-    shares: 20
+  - ticker: "SPMO"                   # Invesco S&P 500 Momentum ETF
+    shares: 20.0
     avg_cost_per_share: 72.00
     category: "etf"
 
-  - ticker: "SCHD"
-    shares: 25
+  - ticker: "SCHD"                   # Schwab US Dividend Equity ETF
+    shares: 25.0
     avg_cost_per_share: 76.00
     category: "etf"
 
-  - ticker: "GLD"
-    shares: 8
+  # ── Gold ──────────────────────────────────────────────────────────
+  - ticker: "GLD"                    # SPDR Gold Trust
+    shares: 8.0
     avg_cost_per_share: 215.00
     category: "gold"
 
-  - ticker: "AAPL"
-    shares: 10
+  # ── Individual Stocks ─────────────────────────────────────────────
+  - ticker: "AAPL"                   # Apple
+    shares: 10.0
     avg_cost_per_share: 178.00
     category: "stocks"
 
-  - ticker: "MSFT"
-    shares: 5
+  - ticker: "MSFT"                   # Microsoft
+    shares: 5.0
     avg_cost_per_share: 380.00
     category: "stocks"
 
-  - ticker: "AMZN"
-    shares: 8
+  - ticker: "AMZN"                   # Amazon
+    shares: 8.0
     avg_cost_per_share: 170.00
     category: "stocks"
+
+  # ── ADD MORE POSITIONS BELOW ──────────────────────────────────────
+  # Copy this template for each position you own:
+  #
+  # - ticker: "GOOGL"
+  #   shares: 0
+  #   avg_cost_per_share: 0
+  #   category: "stocks"
+  #
+  # - ticker: "VXUS"
+  #   shares: 0
+  #   avg_cost_per_share: 0
+  #   category: "intl"
+  #
+  # - ticker: "BND"
+  #   shares: 0
+  #   avg_cost_per_share: 0
+  #   category: "bonds"
+
+
+# ──────────────────────────────────────────────────────────────────────
+# ALLOCATION TARGETS
+# ──────────────────────────────────────────────────────────────────────
+# What percentage of your total portfolio each CATEGORY should be.
+# Must sum to 100.
+#
+# The system automatically splits each category equally among
+# its tickers. Example: etf: 60 with 4 ETFs = 15% each.
+#
+# HOW TO DECIDE YOUR TARGETS:
+#   Conservative:  etf: 50, bonds: 30, gold: 10, stocks: 10
+#   Balanced:      etf: 60, stocks: 25, gold: 10, bonds: 5
+#   Aggressive:    etf: 50, stocks: 40, gold: 10
+#   Growth:        etf: 40, stocks: 50, gold: 5, crypto: 5
+#
+# These are just examples. Pick what matches YOUR risk tolerance.
 
 category_targets:
   etf: 60
   stocks: 30
   gold: 10
 
+  # Add more categories if you use them:
+  # bonds: 0
+  # reit: 0
+  # intl: 0
+  # crypto: 0
+
+
+# ──────────────────────────────────────────────────────────────────────
+# ADVANCED: TICKER-LEVEL TARGETS (OPTIONAL)
+# ──────────────────────────────────────────────────────────────────────
+# If you want precise control over EACH ticker instead of categories,
+# uncomment this section and REMOVE the category_targets section above.
+# Must sum to 100.
+#
+# Most people should use category_targets above. Use this only if
+# you want VOO to be exactly 20% and QQQM to be exactly 15%, etc.
+#
+# target_allocation:
+#   VOO: 20
+#   QQQM: 15
+#   SPMO: 12
+#   SCHD: 13
+#   GLD: 10
+#   AAPL: 10
+#   MSFT: 10
+#   AMZN: 10
+
+
+# ──────────────────────────────────────────────────────────────────────
+# LLM PROVIDER
+# ──────────────────────────────────────────────────────────────────────
+# The AI model that generates natural language analysis summaries.
+# All providers have free tiers. Pick one.
+#
+# OPTIONS:
+#
+#   groq (RECOMMENDED)
+#     Fastest inference. Free tier: 30 requests/minute.
+#     Models: "llama-3.1-8b-instant", "llama-3.1-70b-versatile"
+#     Sign up: console.groq.com
+#     Needs: GROQ_API_KEY in .env
+#
+#   gemini
+#     Google's model. Free tier: 15 requests/minute.
+#     Models: "gemini-1.5-flash", "gemini-2.0-flash"
+#     Sign up: aistudio.google.com
+#     Needs: GOOGLE_API_KEY in .env
+#
+#   ollama
+#     Runs locally on your machine. Completely free. No API key.
+#     Models: "llama3.1:8b", "mistral:7b"
+#     Needs: Ollama installed (ollama.com)
+#     Needs: 8GB+ RAM
+
 llm:
   provider: "groq"
   model: "llama-3.1-8b-instant"
+
+
+# ──────────────────────────────────────────────────────────────────────
+# NOTIFICATIONS
+# ──────────────────────────────────────────────────────────────────────
+# How the agent delivers recommendations to you.
+#
+# Telegram setup (5 minutes):
+#   1. Open Telegram on your phone
+#   2. Search @BotFather and send /newbot
+#   3. Follow the prompts to create your bot
+#   4. Copy the token into .env as TELEGRAM_BOT_TOKEN
+#   5. Search for your new bot in Telegram and send it "hello"
+#   6. Open browser:
+#      https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates
+#   7. Find chat.id in the JSON response
+#   8. Put that number in .env as TELEGRAM_CHAT_ID
+#
+# If you skip Telegram, the agent still prints to your terminal.
 
 notifications:
   telegram:
