@@ -1,38 +1,63 @@
 # src/tools/market_data.py
 """
 Fetch market data from Yahoo Finance and compute technical indicators.
-
-WHY YFINANCE: Free. No API key. No sign-up. Reliable for daily data.
-
-We compute RSI ourselves instead of using pandas-ta because
-pandas-ta is abandoned and fails on Python 3.12+.
 """
 
 import yfinance as yf
 import pandas as pd
+import numpy as np
 
 from src.models.portfolio import TickerScore
 
 
+def _to_series(column_data) -> pd.Series:
+    """
+    Safely convert any yfinance column output to a plain pandas Series.
+
+    WHY THIS EXISTS:
+    yfinance returns different shapes depending on version:
+      - Sometimes a Series
+      - Sometimes a DataFrame with MultiIndex columns
+      - Sometimes a DataFrame with single column
+    squeeze() can over-collapse to a scalar.
+    This function always returns a proper Series.
+    """
+    if isinstance(column_data, pd.DataFrame):
+        # Flatten multi-level columns if needed
+        if column_data.shape[1] == 1:
+            return column_data.iloc[:, 0]
+        return column_data.iloc[:, 0]
+    if isinstance(column_data, pd.Series):
+        return column_data
+    # If somehow a scalar, wrap it
+    return pd.Series([column_data])
+
+
+def _last_value(series) -> float:
+    """
+    Get the last value from a Series, DataFrame, or scalar.
+    Always returns a plain Python float.
+    """
+    if isinstance(series, (int, float, np.integer, np.floating)):
+        return float(series)
+    if isinstance(series, pd.DataFrame):
+        return float(series.iloc[-1, 0])
+    if isinstance(series, pd.Series):
+        return float(series.iloc[-1])
+    return float(series)
+
+
 def _compute_rsi(prices: pd.Series, period: int = 14) -> float:
     """
-    Relative Strength Index (RSI) — momentum indicator.
-
-    HOW IT WORKS:
-    - Track daily price changes
-    - Separate gains from losses
-    - Average gains vs average losses over 'period' days
-    - RSI = 100 - (100 / (1 + avg_gain/avg_loss))
-
-    RSI < 30 = oversold (potentially good buy)
-    RSI > 70 = overbought (potentially expensive)
+    Relative Strength Index (RSI).
+    RSI < 30 = oversold (good buy), RSI > 70 = overbought.
     """
     delta = prices.diff()
     gains = delta.where(delta > 0, 0.0)
     losses = -delta.where(delta < 0, 0.0)
 
-    avg_gain = gains.rolling(window=period).mean().iloc[-1]
-    avg_loss = losses.rolling(window=period).mean().iloc[-1]
+    avg_gain = _last_value(gains.rolling(window=period).mean())
+    avg_loss = _last_value(losses.rolling(window=period).mean())
 
     if avg_loss == 0:
         return 100.0
@@ -41,28 +66,8 @@ def _compute_rsi(prices: pd.Series, period: int = 14) -> float:
     return round(100 - (100 / (1 + rs)), 1)
 
 
-def _safe_float(value) -> float:
-    """
-    Safely convert yfinance output to a plain float.
-
-    WHY THIS EXISTS:
-    yfinance 0.2.40+ sometimes returns a Series or numpy array
-    instead of a scalar, even for single values. This caused
-    the 'float() argument must be a Series' crash on VIX.
-    .squeeze() collapses any single-element container to a scalar.
-    """
-    if isinstance(value, pd.Series):
-        return float(value.squeeze())
-    if isinstance(value, pd.DataFrame):
-        return float(value.squeeze())
-    return float(value)
-
-
 def get_current_prices(tickers: list[str]) -> dict[str, float]:
-    """
-    Batch-fetch latest closing prices.
-    Returns {ticker: price} dict.
-    """
+    """Batch-fetch latest closing prices."""
     if not tickers:
         return {}
 
@@ -74,17 +79,26 @@ def get_current_prices(tickers: list[str]) -> dict[str, float]:
         auto_adjust=True,
     )
 
+    if data.empty:
+        return {t: 0.0 for t in tickers}
+
     prices = {}
+    close = data["Close"]
 
     if len(tickers) == 1:
-        # FIXED: use _safe_float to handle Series/scalar ambiguity
-        prices[tickers[0]] = round(_safe_float(data["Close"].iloc[-1]), 2)
+        series = _to_series(close)
+        prices[tickers[0]] = round(_last_value(series), 2)
     else:
         for t in tickers:
             try:
-                prices[t] = round(_safe_float(data["Close"][t].iloc[-1]), 2)
+                if isinstance(close, pd.DataFrame) and t in close.columns:
+                    prices[t] = round(_last_value(close[t]), 2)
+                else:
+                    col = _to_series(close)
+                    prices[t] = round(_last_value(col), 2)
             except (KeyError, IndexError):
                 prices[t] = 0.0
+
     return prices
 
 
@@ -92,15 +106,15 @@ def analyze_ticker(ticker: str) -> TickerScore:
     """
     Compute attractiveness score for a ticker.
 
-    SCORING (deterministic — no LLM):
+    SCORING (deterministic):
       Start at 5.
-      Below 20-day SMA by 3%+    → +2
-      RSI < 35 (oversold)        → +2
-      RSI > 70 (overbought)      → -1
-      3+ red days in a row        → +1
-      Drawdown > 10% from high    → +1
-      Within 1% of 52-week high   → -2
-      Clamp result to [1, 10].
+      Below 20-day SMA by 3%+  -> +2
+      RSI < 35 (oversold)      -> +2
+      RSI > 70 (overbought)    -> -1
+      3+ red days in a row     -> +1
+      Drawdown > 10% from high -> +1
+      Within 1% of high        -> -2
+      Clamp to [1, 10].
     """
     data = yf.download(
         ticker, period="6mo", interval="1d",
@@ -114,30 +128,33 @@ def analyze_ticker(ticker: str) -> TickerScore:
             score=5, reasoning="No data",
         )
 
-    # FIXED: .squeeze() on every column access to ensure plain Series
-    close = data["Close"].squeeze()
-    opens = data["Open"].squeeze()
+    close = _to_series(data["Close"])
+    opens = _to_series(data["Open"])
 
-    # FIXED: _safe_float for scalar extraction
-    price = _safe_float(close.iloc[-1])
-    sma_20 = _safe_float(close.rolling(20).mean().iloc[-1])
+    price = _last_value(close)
+    sma_20 = _last_value(close.rolling(20).mean())
     rsi = _compute_rsi(close)
-    high = _safe_float(close.max())
-    drawdown = ((price - high) / high) * 100
+    high = float(close.max())
+    drawdown = ((price - high) / high) * 100 if high > 0 else 0
 
-    # Consecutive red days (close < open)
+    # Consecutive red days
     red_days = 0
     for i in range(len(close) - 1, max(len(close) - 10, -1), -1):
-        if _safe_float(close.iloc[i]) < _safe_float(opens.iloc[i]):
-            red_days += 1
-        else:
+        try:
+            c = float(close.iloc[i])
+            o = float(opens.iloc[i])
+            if c < o:
+                red_days += 1
+            else:
+                break
+        except (IndexError, TypeError):
             break
 
     # Scoring
     score = 5
     reasons = []
 
-    if price < sma_20 * 0.97:
+    if sma_20 > 0 and price < sma_20 * 0.97:
         score += 2
         reasons.append(f"{((price / sma_20) - 1) * 100:.1f}% below 20d SMA")
     if rsi < 35:
@@ -171,15 +188,14 @@ def analyze_ticker(ticker: str) -> TickerScore:
 
 
 def get_vix() -> dict:
-    """VIX = market fear gauge. Higher = more fear = potentially better buy window."""
+    """VIX = market fear gauge."""
     data = yf.download("^VIX", period="5d", progress=False, auto_adjust=True)
 
     if data.empty:
         return {"vix": 20.0, "mood": "calm"}
 
-    # FIXED: .squeeze() twice — once for column, once for value
-    close = data["Close"].squeeze()
-    vix = _safe_float(close.iloc[-1])
+    close = _to_series(data["Close"])
+    vix = _last_value(close)
 
     return {
         "vix": round(vix, 1),

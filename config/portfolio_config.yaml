@@ -4,7 +4,7 @@ budget:
   currency: "USD"
   max_single_position_pct: 0.40
 
-strategy: "split_tranches"
+strategy: "lump_sum"
 
 tranches:
   immediate_pct: 60
@@ -16,7 +16,7 @@ tranches:
   final_deadline_day: 28
 
 schedule:
-  payday: 17
+  payday: 14
   pay_frequency: "biweekly"
 
 # ─── YOUR REAL HOLDINGS ─────────────────────────
@@ -28,48 +28,99 @@ schedule:
 #   category: your label (etf, stocks, gold, bonds, crypto, reit, etc.)
 
 holdings:
-  # ── ETFs ──
-  - ticker: "VOO"
-    shares: 0          # ← Replace with your real share count
-    avg_cost_per_share: 0    # ← Replace with your real cost basis
+  # ── Stocks ────────────────────────────────────────────────────────
+  - ticker: "AMD"                    # Advanced Micro Devices
+    shares: 0.637
+    avg_cost_per_share: 313.19
+    category: "stocks"
+
+  - ticker: "AMZN"                   # Amazon
+    shares: 3.758
+    avg_cost_per_share: 212.66
+    category: "stocks"
+
+  - ticker: "DELL"                   # Dell Technologies
+    shares: 6.454
+    avg_cost_per_share: 264.16
+    category: "stocks"
+
+  - ticker: "GOOGL"                  # Alphabet Class A
+    shares: 8.055
+    avg_cost_per_share: 316.67
+    category: "stocks"
+
+  - ticker: "INTC"                   # Intel
+    shares: 2.805
+    avg_cost_per_share: 71.24
+    category: "stocks"
+
+  - ticker: "LLY"                    # Eli Lilly
+    shares: 0.561
+    avg_cost_per_share: 822.26
+    category: "stocks"
+
+  - ticker: "MSFT"                   # Microsoft
+    shares: 1.497
+    avg_cost_per_share: 401.47
+    category: "stocks"
+
+  - ticker: "NVDA"                   # NVIDIA
+    shares: 19.003
+    avg_cost_per_share: 134.26
+    category: "stocks"
+
+  - ticker: "ORCL"                   # Oracle
+    shares: 0.430
+    avg_cost_per_share: 234.00
+    category: "stocks"
+
+  - ticker: "PLTR"                   # Palantir
+    shares: 8.919
+    avg_cost_per_share: 124.85
+    category: "stocks"
+
+  - ticker: "TSLA"                   # Tesla
+    shares: 1.268
+    avg_cost_per_share: 393.39
+    category: "stocks"
+
+  # ── ETFs ──────────────────────────────────────────────────────────
+  - ticker: "QQQM"                   # Invesco NASDAQ 100 ETF
+    shares: 34.779
+    avg_cost_per_share: 224.79
     category: "etf"
 
-  - ticker: "QQQM"
-    shares: 0
-    avg_cost_per_share: 0
+  - ticker: "SCHD"                   # Schwab US Dividend Equity ETF
+    shares: 120.144
+    avg_cost_per_share: 27.06
     category: "etf"
 
-  - ticker: "SPMO"
-    shares: 0
-    avg_cost_per_share: 0
+  - ticker: "SMH"                    # VanEck Semiconductor ETF
+    shares: 2.337
+    avg_cost_per_share: 342.83
     category: "etf"
 
-  - ticker: "SCHD"
-    shares: 0
-    avg_cost_per_share: 0
+  - ticker: "VOO"                    # Vanguard S&P 500 ETF
+    shares: 18.261
+    avg_cost_per_share: 558.38
     category: "etf"
 
-  # ── Gold ──
-  - ticker: "GLD"
-    shares: 0
-    avg_cost_per_share: 0
+  - ticker: "VXUS"                   # Vanguard Total International Stock ETF
+    shares: 13.056
+    avg_cost_per_share: 77.45
+    category: "etf"
+
+  # ── Bitcoin ──────────────────────────────────────────────────────
+  #- ticker: "FBTC"                   # Fidelity Wise Origin Bitcoin Fund
+   # shares: 3.758
+    #avg_cost_per_share: 72.36
+    #category: "etf"
+
+  # ── Gold ─────────────────────────────────────────────────────────
+  - ticker: "IAUM"                   # iShares Gold Trust Micro
+    shares: 46.141
+    avg_cost_per_share: 42.25
     category: "gold"
-
-  # ── Stocks ──
-  - ticker: "AAPL"
-    shares: 0
-    avg_cost_per_share: 0
-    category: "stocks"
-
-  - ticker: "MSFT"
-    shares: 0
-    avg_cost_per_share: 0
-    category: "stocks"
-
-  - ticker: "AMZN"
-    shares: 0
-    avg_cost_per_share: 0
-    category: "stocks"
 
   # Add more positions below...
   # - ticker: "GOOGL"
@@ -81,8 +132,8 @@ holdings:
 # Must sum to 100
 category_targets:
   etf: 60
-  stocks: 30
-  gold: 10
+  stocks: 35
+  gold: 5
 
 llm:
   provider: "groq"
