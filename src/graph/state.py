@@ -1,7 +1,6 @@
+
 # src/graph/state.py
-"""
-LangGraph shared state — flows between all agents.
-"""
+"""LangGraph shared state."""
 
 from typing import TypedDict, Any
 from src.models.portfolio import PortfolioState, DeploymentPlan, TickerScore
@@ -19,3 +18,4 @@ class AgentState(TypedDict):
     revision_count: int
     notification_sent: bool
     error: str | None
+    check_only: bool

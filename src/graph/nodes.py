@@ -110,14 +110,17 @@ def analyst_strategist_node(state: AgentState) -> dict:
         plan, tranche_label = _handle_tranches(
             config, portfolio, ticker_scores, full_budget, max_single_pct,
         )
+    
     else:
         # Lump sum — deploy everything at once
+        check_only = state.get("check_only", False)
         deployed = get_deployed_tranches_this_month()
-        if "full" in deployed:
+
+        if "full" in deployed and not check_only:
             plan = generate_deployment_plan(
                 portfolio, ticker_scores, 0, tranche="full",
             )
-            plan.summary = "Already deployed this month. No action needed."
+            plan.summary = "Already deployed this month. Run with --check to see analysis anyway, or --reset to clear."
             tranche_label = "full (already deployed)"
         else:
             plan = generate_deployment_plan(
@@ -280,12 +283,12 @@ def _handle_tranches(config, portfolio, scores, full_budget, max_single_pct):
 
     else:
         # All tranches deployed this month
+        check_only = True  # Handled by parent function
         plan = generate_deployment_plan(
             portfolio, scores, 0, tranche="all_deployed",
         )
-        plan.summary = "All tranches deployed this month. No action needed."
+        plan.summary = "All tranches deployed this month. Run with --check to see fresh analysis, or --reset to clear."
         return plan, "ALL DEPLOYED this month"
-
 
 def _format_drift_for_llm(portfolio) -> str:
     lines = []
@@ -438,3 +441,22 @@ def _build_notification(plan, portfolio, mood: str) -> str:
     ])
 
     return "\n".join(lines)
+
+# ═══════════════════════════════════════════════════════════════
+# NODE 6: CHECK-ONLY OUTPUT (no save, no notify)
+# ═══════════════════════════════════════════════════════════════
+
+def check_only_node(state: AgentState) -> dict:
+    """
+    Display the recommendation without saving or sending.
+    Safe to run every day without side effects.
+    """
+    plan = state["deployment_plan"]
+    portfolio = state["portfolio"]
+    mood = state["market_mood"]
+
+    msg = _build_notification(plan, portfolio, mood)
+    print("\n" + msg)
+    print("\n   ℹ️  CHECK MODE — Nothing saved. Nothing sent to Telegram.")
+
+    return {"notification_sent": False}
