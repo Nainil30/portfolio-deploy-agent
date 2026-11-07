@@ -302,7 +302,7 @@ class Bot:
                     InlineKeyboardButton("✅ Record", callback_data=f"ok:{token}"),
                     InlineKeyboardButton("Cancel", callback_data=f"no:{token}"),
                 ]])
-            await self.send(update, fmt.esc(reply.text), markup)
+            await self.send(update, fmt.md_to_html(reply.text), markup)
             return
         await self.send(update, "I didn't catch that. Try “bought 400 of VOO”, “I got a 5k bonus”, or /help.")
 
