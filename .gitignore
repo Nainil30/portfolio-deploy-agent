@@ -1,46 +1,24 @@
-# Secrets
+# Secrets & personal data — never commit
 .env
+config/holdings.yaml
+data/
+*.db
+*.csv
+!tests/**/*.csv
 
 # Python
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-
-# Virtual environment
 .venv/
 venv/
-env/
-
-# Database (personal data)
-data/*.db
-
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Test cache
+__pycache__/
+*.py[cod]
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
+build/
+dist/
 
-# Streamlit
-.streamlit/
-
-# Test files (keep in repo but optional)
-test_*.py
-!tests/test_*.py
-
-
-# Real portfolio config (personal data)
-config/portfolio_config.yaml
-
-
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

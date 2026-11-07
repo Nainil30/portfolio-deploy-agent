@@ -1,0 +1,24 @@
+# Fixed prices used by `--offline` mode and the test suite, so demos and tests
+# never depend on the network. Rounded from Yahoo closes in Nov 2026, not live data.
+prices:
+  VOO: 680.00
+  QQQM: 272.00
+  VHT: 341.00
+  SMH: 465.00
+  SCHD: 35.30
+  SPMO: 125.00
+  VXUS: 81.20
+  IAUM: 40.50
+  BRK.B: 571.00
+  NVDA: 189.00
+  GOOGL: 287.00
+  DELL: 335.00
+  TSLA: 361.00
+  SPCX: 132.00
+  MSFT: 535.00
+  AMZN: 263.00
+  PLTR: 161.00
+  AMD: 445.00
+  LLY: 1365.00
+  INTC: 56.00
+  ORCL: 116.00

@@ -1,0 +1,8 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data          # SQLite ledger survives restarts/rebuilds
+      - ./config:/app/config:ro   # edit strategy.yaml without rebuilding

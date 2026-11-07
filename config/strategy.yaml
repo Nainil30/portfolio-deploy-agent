@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  strategy.yaml — the written investing plan the bot enforces.
+#
+#  This file holds NO personal holdings or secrets, so it is safe to commit.
+#  Your positions live in the local SQLite ledger (data/pda.db, gitignored),
+#  seeded from config/holdings.yaml or a Fidelity "Positions" CSV export.
+#
+#  Rules of the plan:
+#    • Buy-only. The bot never recommends selling.
+#    • Rebalance only with new money: drift is closed by steering the monthly
+#      buys and the stock slot, never by trimming winners.
+# ─────────────────────────────────────────────────────────────────────────────
+
+goal:
+  target_value: 155000          # long-term portfolio target ($)
+  expected_annual_return: 0.07  # used ONLY for projections, never for decisions
+
+monthly:
+  amount: 2000                  # what you invest each month
+  reminder_day: 15              # day of month the bot sends your buy list
+  reminder_time: "09:30"
+  timezone: "America/New_York"
+  min_buy: 25                   # buys smaller than this are folded into the overflow ticker
+
+  # The fixed part of the monthly buy ($). Scaled proportionally if you
+  # invest a different amount (e.g. "/plan 3000").
+  split:
+    VOO: 650
+    VHT: 250
+    BRK.B: 200
+    IAUM: 200
+    SMH: 150
+    QQQM: 100
+    SPMO: 50
+
+  # The flexible part: goes to whichever candidate is furthest below its
+  # target that month (after guardrails).
+  stock_slot:
+    amount: 400
+    candidates: [NVDA, GOOGL, SPCX, TSLA, MSFT, AMZN]
+
+# Target weights (% of the whole portfolio). Must total 100.
+#   bucket: core_etf | etf | gold | stock    (single-stock cap applies to "stock")
+#   ai:     true if the position is mostly a bet on the AI/semis/mega-cap tech trade
+targets:
+  # Core ETFs — 40%
+  VOO:   { pct: 30.0, bucket: core_etf, ai: false }
+  QQQM:  { pct: 10.0, bucket: core_etf, ai: true }
+  # Other ETFs — 20%
+  VHT:   { pct: 8.0,  bucket: etf, ai: false }
+  SMH:   { pct: 6.0,  bucket: etf, ai: true }
+  SCHD:  { pct: 2.8,  bucket: etf, ai: false }
+  SPMO:  { pct: 2.4,  bucket: etf, ai: true }
+  VXUS:  { pct: 0.8,  bucket: etf, ai: false }
+  # Gold — 8%
+  IAUM:  { pct: 8.0,  bucket: gold, ai: false }
+  # Stocks — 32%
+  BRK.B: { pct: 7.0,  bucket: stock, ai: false }
+  NVDA:  { pct: 5.0,  bucket: stock, ai: true }
+  GOOGL: { pct: 4.0,  bucket: stock, ai: true }
+  DELL:  { pct: 3.0,  bucket: stock, ai: true }
+  TSLA:  { pct: 2.5,  bucket: stock, ai: true }
+  SPCX:  { pct: 2.5,  bucket: stock, ai: true }   # SpaceX — TSLA + SPCX = 5%
+  MSFT:  { pct: 2.5,  bucket: stock, ai: true }
+  AMZN:  { pct: 2.0,  bucket: stock, ai: true }
+  PLTR:  { pct: 1.5,  bucket: stock, ai: true }
+  AMD:   { pct: 1.0,  bucket: stock, ai: true }
+  LLY:   { pct: 0.6,  bucket: stock, ai: false }
+  INTC:  { pct: 0.4,  bucket: stock, ai: true }
+
+guardrails:
+  never_sell: true
+  # VOO must stay at least 3x QQQM: QQQM's top holdings are already inside VOO,
+  # so a 20/20 split just doubles up on the same AI names.
+  core_ratio: { ticker: VOO, versus: QQQM, min_multiple: 3.0 }
+  # No single stock above 5% of the portfolio.
+  max_single_stock_pct: 5.0
+  # Per-ticker overrides of the single-stock cap.
+  #   DELL 3%: your job already gives you Dell exposure.
+  #   BRK.B 7%: a diversified holding company (70+ businesses), so it is capped
+  #             at its own 7% target instead of the 5% single-stock cap.
+  per_ticker_caps:
+    DELL: 3.0
+    BRK.B: 7.0
+  # VHT and BRK.B must be the biggest non-AI buys; they cushion an AI drawdown.
+  cushions: [VHT, BRK.B]
+  # Where money goes when a guardrail blocks a buy.
+  overflow_ticker: VOO
+
+alerts:
+  daily_check_time: "16:30"     # after US market close, Mon–Fri
+  drawdown_levels_pct: [10, 20, 30]
+  weekly_digest: true           # Sunday summary
+
+# Yahoo Finance uses different symbols for a few tickers.
+yahoo_aliases:
+  BRK.B: BRK-B
