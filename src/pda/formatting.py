@@ -24,6 +24,16 @@ def esc(x: object) -> str:
     return html.escape(str(x), quote=False)
 
 
+def md_to_html(text: str) -> str:
+    """LLM replies use light Markdown; Telegram HTML needs tags. Escape first, then
+    convert **bold**, *italic* and `code`. Anything else stays as plain text."""
+    out = esc(text)
+    out = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", out, flags=re.S)
+    out = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<i>\1</i>", out)
+    out = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", out)
+    return out
+
+
 def to_plain(text: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", text))
 

@@ -25,11 +25,18 @@ from pda.service import Service
 log = logging.getLogger(__name__)
 
 PROVIDERS = {
-    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "GROQ_API_KEY"),
+    "groq": ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b", "GROQ_API_KEY"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.5-flash", "GEMINI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", "OPENROUTER_API_KEY"),
     "ollama": ("http://localhost:11434/v1", "llama3.1", None),
 }
+
+# Providers retire models often. If the configured one 404s, we ask the provider
+# which models exist and switch to the first match from this list (tool-calling capable).
+FALLBACK_MODELS = (
+    "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile", "qwen/qwen3-32b",
+    "gemini-2.5-flash", "gemini-2.0-flash", "llama3.1",
+)
 
 def system_prompt(strategy) -> str:
     """Describe the user's own plan to the model, built from their strategy file."""
@@ -124,18 +131,41 @@ class LLMClient:
             return None
         return cls(provider, base, model, key)
 
-    async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+    def _headers(self) -> dict:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        body: dict = {"model": self.model, "messages": messages, "temperature": 0.2}
-        if tools:
-            body["tools"] = tools
-            body["tool_choice"] = "auto"
-        async with httpx.AsyncClient(timeout=45) as client:
-            r = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=body)
+        return headers
+
+    async def _pick_available_model(self, client: httpx.AsyncClient) -> str | None:
+        """The configured model is gone: choose a replacement the provider still serves."""
+        try:
+            r = await client.get(f"{self.base_url}/models", headers=self._headers())
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]
+            available = {m["id"] for m in r.json().get("data", [])}
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not list %s models: %s", self.provider, exc)
+            return None
+        return next((m for m in FALLBACK_MODELS if m in available and m != self.model), None)
+
+    async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=45) as client:
+            for attempt in range(2):
+                body: dict = {"model": self.model, "messages": messages, "temperature": 0.2}
+                if tools:
+                    body["tools"] = tools
+                    body["tool_choice"] = "auto"
+                r = await client.post(f"{self.base_url}/chat/completions", headers=self._headers(), json=body)
+                if r.status_code == 404 and attempt == 0:
+                    replacement = await self._pick_available_model(client)
+                    if replacement:
+                        log.warning("Model %s is unavailable on %s; switching to %s (set LLM_MODEL to pin one)",
+                                    self.model, self.provider, replacement)
+                        self.model = replacement
+                        continue
+                r.raise_for_status()
+                return r.json()["choices"][0]["message"]
+        raise RuntimeError("unreachable")
 
 
 class Advisor:

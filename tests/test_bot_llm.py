@@ -59,3 +59,35 @@ def test_advisor_propose_buy_does_not_write(service):
     reply = asyncio.run(Advisor(llm, service).answer("I bought 650 of voo"))
     assert reply.proposed_buys == [("VOO", 650.0, None)]
     assert service.ledger.holdings()["VOO"].shares == before  # nothing written until the human confirms
+
+
+def test_llm_switches_model_when_provider_retired_it(monkeypatch):
+    """Groq retired llama-3.3-70b-versatile in 2026; the client must recover on its own."""
+    import httpx
+
+    from pda.llm import LLMClient
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/models"):
+            return httpx.Response(200, json={"data": [{"id": "whisper-large-v3"}, {"id": "openai/gpt-oss-20b"}]})
+        model = __import__("json").loads(request.content)["model"]
+        calls.append(model)
+        if model == "retired-model":
+            return httpx.Response(404, json={"error": {"message": "model does not exist"}})
+        return httpx.Response(200, json={"choices": [{"message": {"content": f"hi from {model}"}}]})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    client = LLMClient("groq", "https://api.example/v1", "retired-model", "key")
+    msg = asyncio.run(client.chat([{"role": "user", "content": "hi"}]))
+    assert msg["content"] == "hi from openai/gpt-oss-20b"
+    assert calls == ["retired-model", "openai/gpt-oss-20b"]
+    assert client.model == "openai/gpt-oss-20b"  # remembered for later calls
+
+
+def test_llm_markdown_becomes_telegram_html():
+    assert fmt.md_to_html("**VOO ≥ 3 × QQQM** & `pda plan` <x>") == (
+        "<b>VOO ≥ 3 × QQQM</b> &amp; <code>pda plan</code> &lt;x&gt;"
+    )
