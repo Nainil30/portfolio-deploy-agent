@@ -10,19 +10,18 @@ from pda.config import Strategy
 from pda.insights import Drawdown, Projection, StressResult
 from pda.ledger import Tx
 from pda.models import Plan, RuleCheck, Snapshot
+from pda.money import money
 from pda.service import Recorded
 
 DISCLAIMER = "<i>Personal planning tool, not financial advice.</i>"
-BUCKET_NAMES = {"core_etf": "Core ETFs", "etf": "Other ETFs", "gold": "Gold", "stock": "Stocks", "untargeted": "Untargeted"}
+BUCKET_NAMES = {
+    "core_etf": "Core ETFs", "etf": "Other ETFs", "stock": "Stocks", "bond": "Bonds", "gold": "Gold",
+    "reit": "REITs", "crypto": "Crypto", "cash": "Cash", "untargeted": "Untargeted",
+}
 
 
 def esc(x: object) -> str:
     return html.escape(str(x), quote=False)
-
-
-def money(x: float, cents: bool = False) -> str:
-    sign = "-" if x < 0 else ""
-    return f"{sign}${abs(x):,.2f}" if cents else f"{sign}${abs(x):,.0f}"
 
 
 def to_plain(text: str) -> str:
@@ -56,7 +55,7 @@ def fmt_plan(plan: Plan, snap: Snapshot, already_done: bool = False) -> str:
             out.append(f"• {esc(n.message)}")
     if snap.missing_prices:
         out.append(f"\n⚠️ No live price for: {esc(', '.join(snap.missing_prices))}")
-    out += ["", "Place these as dollar-based orders in Fidelity, then tap <b>✅ I bought these</b>.", DISCLAIMER]
+    out += ["", "Place these as amount-based orders at your broker, then tap <b>✅ I bought these</b>.", DISCLAIMER]
     return "\n".join(out)
 
 
@@ -75,10 +74,11 @@ def fmt_portfolio(snap: Snapshot, strategy: Strategy, dd: Drawdown | None = None
         targets_by_bucket[spec.bucket] = targets_by_bucket.get(spec.bucket, 0) + spec.pct
     actual = snap.bucket_pcts()
     rows = [f"{'Bucket':<11}{'Now':>6}{'Goal':>6}"]
-    for b in ("core_etf", "etf", "gold", "stock", "untargeted"):
-        if b in actual or b in targets_by_bucket:
+    for b in BUCKET_NAMES:
+        if actual.get(b, 0) > 0 or targets_by_bucket.get(b, 0) > 0:
             rows.append(f"{BUCKET_NAMES[b]:<11}{actual.get(b, 0):>5.1f}%{targets_by_bucket.get(b, 0):>5.1f}%")
-    rows.append(f"{'AI-heavy':<11}{snap.ai_pct():>5.1f}%")
+    if strategy.has_theme:
+        rows.append(f"{'Theme-heavy':<11}{snap.ai_pct():>5.1f}%")
     out.append("<pre>" + esc("\n".join(rows)) + "</pre>")
     out.append("Send /drift for every ticker.")
     return "\n".join(out)
@@ -137,7 +137,11 @@ def fmt_stress(snap: Snapshot, results: list[StressResult], monthly: float) -> s
     return "\n".join(out)
 
 
-def fmt_drawdown_alert(level: float, dd: Drawdown, snap: Snapshot, monthly: float) -> str:
+def fmt_drawdown_alert(
+    level: float, dd: Drawdown, snap: Snapshot, monthly: float, cushions: tuple[str, ...] = ()
+) -> str:
+    cushion_line = (f"• {', '.join(cushions)} are there to soften the drop." if cushions
+                    else "• A diversified plan is built to ride out drops like this.")
     return "\n".join([
         f"🧘 <b>Hold the line</b>: the portfolio is down {dd.pct(snap.total_cost):.0f}% from its peak "
         f"({money(dd.dollars)} on paper).",
@@ -145,7 +149,7 @@ def fmt_drawdown_alert(level: float, dd: Drawdown, snap: Snapshot, monthly: floa
         "This is the scenario the plan was built for:",
         "• Nothing is sold, so nothing is lost yet.",
         f"• Your next {money(monthly)} buys more shares at lower prices.",
-        "• VHT, BRK.B and gold are there to soften AI-heavy drops.",
+        cushion_line,
         "",
         "Action: <b>none</b>. Keep the monthly buy. /stress shows the bigger picture.",
     ])
@@ -161,7 +165,7 @@ def fmt_recorded(rec: Recorded, title: str = "Recorded") -> str:
 
 def fmt_history(txs: list[Tx]) -> str:
     if not txs:
-        return "No transactions yet. Import holdings (send your Fidelity CSV) or record a buy with /bought."
+        return "No transactions yet. Import holdings (send your broker's positions CSV) or record a buy with /bought."
     rows = [f"{tx.ts[:10]} {tx.kind:<6} {tx.ticker:<6}{money(tx.amount):>8}" for tx in txs]
     return "🧾 <b>Recent activity</b>\n<pre>" + esc("\n".join(rows)) + "</pre>"
 
@@ -174,11 +178,39 @@ def fmt_undo(txs: list[Tx]) -> str:
     return f"↩️ Undid {what}: " + esc(", ".join(f"{tx.ticker} {money(tx.amount)}" for tx in txs[:12]))
 
 
+def fmt_settings(strategy: Strategy, overrides: dict[str, str]) -> str:
+    s = strategy
+    g = s.guardrails
+    rules = ["never sell"] if g.never_sell else []
+    if g.max_single_stock_pct is not None:
+        rules.append(f"no stock above {g.max_single_stock_pct:g}%")
+    rules += [f"{t} ≤ {c:g}%" for t, c in g.per_ticker_caps.items()]
+    if g.has_core_ratio:
+        rules.append(f"{g.core_ticker} ≥ {g.core_min_multiple:g}x {g.core_versus}")
+    if g.cushions:
+        rules.append(f"cushions: {', '.join(g.cushions)}")
+    targets = ", ".join(f"{t} {v.pct:g}%" for t, v in sorted(s.targets.items(), key=lambda kv: -kv[1].pct))
+    mode = ("auto: each month fills the biggest gaps vs target" if s.mode == "auto"
+            else f"fixed split + {money(s.slot_amount)} stock slot" if s.slot_amount else "fixed split")
+    changed = f"\n<i>Changed via /set: {esc(', '.join(sorted(overrides)))}. /set reset to undo.</i>" if overrides else ""
+    return "\n".join([
+        f"⚙️ <b>{esc(s.name)}</b>",
+        f"Monthly: <b>{money(s.monthly_amount)}</b> on day {s.reminder_day} at {s.reminder_time:%H:%M} ({esc(s.timezone.key)})",
+        f"Goal: <b>{money(s.goal_value)}</b> · projections assume {s.expected_return * 100:g}%/yr",
+        f"Mode: {esc(mode)}",
+        f"Guardrails: {esc('; '.join(rules))}",
+        f"Targets: {esc(targets)}",
+        "",
+        "Change: <code>/set monthly 3000</code> · <code>/set goal 250k</code> · <code>/set day 15</code> · <code>/set return 6</code>",
+        "Change tickers/rules: edit config/strategy.yaml (or rerun <code>pda init</code>) and restart.",
+    ]) + changed
+
+
 HELP = """🤖 <b>Portfolio Deploy Agent</b>
 
 <b>Monthly flow</b>
-1. On payday I send your buy list (or tap 📋 Plan).
-2. Place the orders in Fidelity.
+1. On your reminder day I send your buy list (or tap 📋 Plan).
+2. Place the orders at your broker.
 3. Tap <b>✅ I bought these</b>. Holdings update automatically.
 
 <b>Commands</b>
@@ -187,12 +219,13 @@ HELP = """🤖 <b>Portfolio Deploy Agent</b>
 /portfolio: value, buckets, goal progress
 /drift: every ticker vs target
 /guardrails: rule status
-/goal: when you hit the target
+/goal: when you hit your money goal
 /stress: bad-year scenarios
-/bought VOO 650 [@ 612.40]: record a buy ($). Add "sh" for shares: /bought NVDA 2 sh
+/bought VOO 650 [@ 612.40]: record a buy (amount). Add "sh" for shares: /bought NVDA 2 sh
 /history · /undo
-/import: send a Fidelity positions CSV or holdings.yaml
+/settings: your plan · /set monthly 3000 · /set goal 250k
+/import: send a positions CSV or holdings.yaml
 
-<b>Or just type</b>: "bought 400 of nvda", "I got a 5k bonus", "how far am I from the goal?"
+<b>Or just type</b>: "bought 400 of voo", "I got a 5k bonus", "how far am I from the goal?"
 
 Buy-only by design. I'll never tell you to sell."""

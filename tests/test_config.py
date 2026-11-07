@@ -3,12 +3,12 @@ import copy
 import pytest
 import yaml
 
-from pda.config import DEFAULT_STRATEGY, ConfigError, normalize_ticker, parse_strategy
+from pda.config import DEMO_STRATEGY, ConfigError, normalize_ticker, parse_strategy
 
 
 @pytest.fixture
 def raw():
-    with open(DEFAULT_STRATEGY, encoding="utf-8") as f:
+    with open(DEMO_STRATEGY, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -50,7 +50,7 @@ def test_cushions_must_be_biggest_non_ai_buys(raw):
     bad = copy.deepcopy(raw)
     bad["monthly"]["split"]["IAUM"] = 300
     bad["monthly"]["split"]["VOO"] = 550
-    with pytest.raises(ConfigError, match="bigger non-AI buy"):
+    with pytest.raises(ConfigError, match="bigger non-theme buy"):
         parse_strategy(bad)
 
 
@@ -58,7 +58,7 @@ def test_target_above_cap_rejected(raw):
     bad = copy.deepcopy(raw)
     bad["targets"]["NVDA"]["pct"] = 6
     bad["targets"]["GOOGL"]["pct"] = 3
-    with pytest.raises(ConfigError, match="single-stock cap"):
+    with pytest.raises(ConfigError, match="above its cap"):
         parse_strategy(bad)
 
 

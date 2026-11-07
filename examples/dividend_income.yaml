@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  PRESET: "Dividend income" (auto mode + caps + cushions)
+#
+#  Dividend ETFs plus a few dividend stocks, each capped at 5% so no single
+#  company dominates. Bonds and SCHD act as the cushion.
+#
+#  Use it:   pda init --preset dividend_income
+# ─────────────────────────────────────────────────────────────────────────────
+
+profile:
+  name: "Dividend income"
+  currency: "$"
+
+goal:
+  target_value: 250000
+  expected_annual_return: 0.06
+
+monthly:
+  mode: auto
+  amount: 1000
+  reminder_day: 5
+  reminder_time: "09:30"
+  timezone: "America/Chicago"
+  min_buy: 25
+
+targets:
+  SCHD: { pct: 35, bucket: core_etf }
+  VIG:  { pct: 20, bucket: etf }
+  VYM:  { pct: 15, bucket: etf }
+  VXUS: { pct: 10, bucket: etf }
+  BND:  { pct: 8,  bucket: bond }
+  JNJ:  { pct: 4,  bucket: stock }
+  KO:   { pct: 4,  bucket: stock }
+  PG:   { pct: 4,  bucket: stock }
+
+guardrails:
+  never_sell: true
+  max_single_stock_pct: 5
+  cushions: [SCHD, BND]
+  overflow_ticker: SCHD
+
+alerts:
+  drawdown_levels_pct: [10, 20, 30]
+  weekly_digest: true

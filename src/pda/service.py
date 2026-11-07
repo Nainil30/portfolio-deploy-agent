@@ -9,13 +9,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from pda.config import Strategy, normalize_ticker
+from pda.config import SETTABLE, Strategy, normalize_ticker
 from pda.engine import extra_plan, monthly_plan
 from pda.guardrails import check_portfolio
 from pda.importers import parse_file
 from pda.insights import Drawdown, Projection, StressResult, project, stress_test
 from pda.ledger import Ledger, LedgerError, Tx
 from pda.models import Plan, RuleCheck, Snapshot
+from pda.money import set_currency
 from pda.portfolio import build_snapshot
 from pda.prices import PriceProvider
 
@@ -33,9 +34,40 @@ class Recorded:
 
 class Service:
     def __init__(self, strategy: Strategy, ledger: Ledger, prices: PriceProvider):
-        self.strategy = strategy
+        self.base_strategy = strategy
         self.ledger = ledger
         self.prices = prices
+        self.strategy = strategy.with_overrides(ledger.settings())
+        set_currency(strategy.currency)
+
+    # ── settings (/set monthly 3000) ───────────────────────────────────
+    ALIASES = {"monthly": "monthly_amount", "amount": "monthly_amount", "goal": "goal_value",
+               "day": "reminder_day", "payday": "reminder_day", "return": "expected_return"}
+
+    def set_setting(self, key: str, raw: str) -> tuple[str, float]:
+        key = self.ALIASES.get(key.lower(), key.lower())
+        if key not in SETTABLE:
+            raise ServiceError("You can set: monthly, goal, day, return. Example: /set monthly 3000")
+        try:
+            value = float(str(raw).replace(",", "").replace("$", "").rstrip("%kK")) * (
+                1000 if str(raw).lower().endswith("k") else 1)
+        except ValueError as exc:
+            raise ServiceError(f"{raw!r} isn't a number") from exc
+        if key == "expected_return" and value > 1:
+            value /= 100  # "7" means 7%
+        if key == "reminder_day" and not 1 <= value <= 28:
+            raise ServiceError("Day must be 1–28 so it exists every month.")
+        if key in ("monthly_amount", "goal_value") and value <= 0:
+            raise ServiceError("Must be positive.")
+        if key == "expected_return" and not -0.5 < value < 0.5:
+            raise ServiceError("Use something like 7 (for 7%).")
+        self.ledger.set_setting(key, str(value))
+        self.strategy = self.base_strategy.with_overrides(self.ledger.settings())
+        return key, value
+
+    def reset_settings(self) -> None:
+        self.ledger.clear_settings()
+        self.strategy = self.base_strategy
 
     # ── read side ──────────────────────────────────────────────────────
     def snapshot(self, save: bool = True) -> Snapshot:

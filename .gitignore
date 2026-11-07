@@ -1,6 +1,7 @@
 # Secrets & personal data — never commit
 .env
 config/holdings.yaml
+config/strategy.yaml
 data/
 *.db
 *.csv

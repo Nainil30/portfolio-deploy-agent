@@ -1,9 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  strategy.yaml — the written investing plan the bot enforces.
+#  PRESET: "Core + stock slot" (fixed mode, the most guardrails)
 #
-#  This file holds NO personal holdings or secrets, so it is safe to commit.
-#  Your positions live in the local SQLite ledger (data/pda.db, gitignored),
-#  seeded from config/holdings.yaml or a Fidelity "Positions" CSV export.
+#  A $2k/month plan toward $155k: S&P 500 core, healthcare/semis/momentum
+#  ETFs, gold, and a basket of individual stocks with an AI/tech tilt.
+#  It shows off every feature: a written split, a monthly "stock slot",
+#  position caps, a core ratio and defensive cushions.
+#
+#  Use it:   pda init --preset core_plus_stock_slot     (or copy to config/strategy.yaml)
+#  Reference for every field: docs/CONFIGURATION.md
 #
 #  Rules of the plan:
 #    • Buy-only. The bot never recommends selling.
@@ -11,11 +15,16 @@
 #      buys and the stock slot, never by trimming winners.
 # ─────────────────────────────────────────────────────────────────────────────
 
+profile:
+  name: "Core + stock slot"
+  currency: "$"
+
 goal:
   target_value: 155000          # long-term portfolio target ($)
   expected_annual_return: 0.07  # used ONLY for projections, never for decisions
 
 monthly:
+  mode: fixed                   # fixed = written split below; auto = fill biggest gaps
   amount: 2000                  # what you invest each month
   reminder_day: 15              # day of month the bot sends your buy list
   reminder_time: "09:30"
@@ -41,7 +50,7 @@ monthly:
 
 # Target weights (% of the whole portfolio). Must total 100.
 #   bucket: core_etf | etf | gold | stock    (single-stock cap applies to "stock")
-#   ai:     true if the position is mostly a bet on the AI/semis/mega-cap tech trade
+#   ai:     true if the position is mostly a bet on one theme (here: AI/semis/mega-cap tech)
 targets:
   # Core ETFs — 40%
   VOO:   { pct: 30.0, bucket: core_etf, ai: false }

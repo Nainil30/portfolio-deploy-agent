@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  PRESET: "Three-fund" (auto mode, the simplest possible plan)
+#
+#  You list targets; each month the bot sends your money to whatever is
+#  furthest below target. That's "rebalancing with new money": no selling.
+#
+#  Use it:   pda init --preset three_fund
+#  Reference for every field: docs/CONFIGURATION.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+profile:
+  name: "Three-fund"
+  currency: "$"
+
+goal:
+  target_value: 100000
+  expected_annual_return: 0.06   # projections only
+
+monthly:
+  mode: auto
+  amount: 500
+  reminder_day: 1
+  reminder_time: "09:00"
+  timezone: "America/New_York"
+  min_buy: 10
+
+targets:
+  VTI:  { pct: 60, bucket: core_etf }   # US total market
+  VXUS: { pct: 30, bucket: etf }        # international
+  BND:  { pct: 10, bucket: bond }       # US bonds
+
+guardrails:
+  never_sell: true
+  overflow_ticker: VTI
+
+alerts:
+  drawdown_levels_pct: [10, 20, 30]
+  weekly_digest: true

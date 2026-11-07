@@ -1,6 +1,6 @@
 # holdings.example.yaml — starting positions for the ledger.
 #
-#   cp config/holdings.example.yaml config/holdings.yaml   (gitignored)
+#   cp examples/holdings.example.yaml config/holdings.yaml   (gitignored)
 #   pda import config/holdings.yaml
 #
 # Or skip this file entirely: export "Positions" as CSV from Fidelity and

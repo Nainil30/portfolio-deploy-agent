@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  PRESET: "India index" (auto mode, ₹, NSE tickers)
+#
+#  Shows that nothing is US-specific: any Yahoo Finance symbol works
+#  (.NS = NSE India, .L = London, .TO = Toronto, BTC-USD = crypto ...).
+#
+#  Use it:   pda init --preset india_index
+# ─────────────────────────────────────────────────────────────────────────────
+
+profile:
+  name: "India index"
+  currency: "₹"
+
+goal:
+  target_value: 5000000          # ₹50 lakh
+  expected_annual_return: 0.10
+
+monthly:
+  mode: auto
+  amount: 25000
+  reminder_day: 7
+  reminder_time: "10:00"
+  timezone: "Asia/Kolkata"
+  min_buy: 500
+
+targets:
+  NIFTYBEES.NS:  { pct: 50, bucket: core_etf }   # Nifty 50
+  JUNIORBEES.NS: { pct: 20, bucket: etf }        # Nifty Next 50
+  MON100.NS:     { pct: 15, bucket: etf, ai: true }  # Nasdaq 100 (US tech)
+  GOLDBEES.NS:   { pct: 10, bucket: gold }
+  HDFCBANK.NS:   { pct: 5,  bucket: stock }
+
+guardrails:
+  never_sell: true
+  max_single_stock_pct: 7
+  overflow_ticker: NIFTYBEES.NS
+
+alerts:
+  daily_check_time: "15:45"      # after NSE close
+  drawdown_levels_pct: [10, 20, 30]
+  weekly_digest: true

@@ -31,10 +31,27 @@ PROVIDERS = {
     "ollama": ("http://localhost:11434/v1", "llama3.1", None),
 }
 
-SYSTEM_PROMPT = """You are the assistant inside a personal, buy-only investing bot.
-The user follows a written plan: a fixed $2k/month split, a "stock slot" for the
-stock furthest below target, and guardrails (VOO >= 3x QQQM, no stock above 5%,
-DELL max 3%, VHT and BRK.B are the biggest non-AI buys, never sell, rebalance only with new money).
+def system_prompt(strategy) -> str:
+    """Describe the user's own plan to the model, built from their strategy file."""
+    g = strategy.guardrails
+    rules = ["never sell", "rebalance only with new money"]
+    if g.max_single_stock_pct is not None:
+        rules.append(f"no single stock above {g.max_single_stock_pct:g}%")
+    rules += [f"{t} max {c:g}%" for t, c in g.per_ticker_caps.items()]
+    if g.has_core_ratio:
+        rules.append(f"{g.core_ticker} at least {g.core_min_multiple:g}x {g.core_versus}")
+    if g.cushions:
+        rules.append(f"{' and '.join(g.cushions)} are the biggest defensive buys")
+    if strategy.mode == "auto":
+        how = "each month the money goes to whatever is furthest below target"
+    else:
+        how = "a fixed monthly split"
+        if strategy.slot_amount:
+            how += " plus a stock slot for the candidate furthest below target"
+    cur = strategy.currency
+    return f"""You are the assistant inside a personal, buy-only investing bot.
+The user's plan "{strategy.name}": invest {cur}{strategy.monthly_amount:,.0f}/month toward a goal of
+{cur}{strategy.goal_value:,.0f}; {how}. Guardrails: {"; ".join(rules)}.
 
 Rules:
 - Get every number from a tool. Never invent prices, amounts or returns.
@@ -43,7 +60,8 @@ Rules:
 - To record a purchase the user says they made, call propose_buy. The user confirms it with a button.
 - Don't give personalized advice beyond this plan. If asked about new stocks or timing the
   market, explain how it would fit the plan's rules.
-- Be brief: plain text, at most ~8 lines, and use $ amounts."""
+- Be brief: plain text, at most ~8 lines, amounts in {cur}."""
+
 
 TOOLS = [
     {"type": "function", "function": {
@@ -164,7 +182,7 @@ class Advisor:
         import asyncio
 
         reply = AgentReply(text="")
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}, *(history or [])[-6:],
+        messages = [{"role": "system", "content": system_prompt(self.service.strategy)}, *(history or [])[-6:],
                     {"role": "user", "content": question}]
         for _ in range(self.max_rounds):
             msg = await self.client.chat(messages, TOOLS)
