@@ -64,7 +64,7 @@ with right:
 st.subheader("This month's plan")
 plan = monthly_plan(snap, s)  # preview only; not saved to the ledger
 st.dataframe(pd.DataFrame([{"ticker": ln.ticker, "amount": ln.amount, "why": ln.reason} for ln in plan.lines]),
-             hide_index=True, use_container_width=True)
+             hide_index=True, width="stretch")
 for n in plan.notes:
     st.caption("🛡 " + n.message)
 

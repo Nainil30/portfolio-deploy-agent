@@ -135,7 +135,7 @@ There are two bugs the tests caught here, which make good interview stories:
 - **`scripts/setup.sh` / `setup.ps1`:** install, demo, wizard and doctor in one command.
 
 ### Step 12: Tests and shipping
-- **118 offline tests**, about 3 seconds. They cover money invariants at several amounts, each guardrail and how they interact, both modes, every preset, the wizard (scripted answers), the ledger and undo, CSVs from several brokers, Telegram handlers (fake updates), and the AI loop (a **scripted fake model**: it proves `propose_buy` doesn't write).
+- **119 offline tests**, about 3 seconds. They cover money invariants at several amounts, each guardrail and how they interact, both modes, every preset, the wizard (scripted answers), the ledger and undo, CSVs from several brokers, Telegram handlers (fake updates), and the AI loop (a **scripted fake model**: it proves `propose_buy` doesn't write).
 - **CI:** ruff, validating every preset, `pda demo`, and pytest on Python 3.11 and 3.12.
 - **Deployment:** Docker and compose with a data volume, for a Raspberry Pi or an always-free VM. `pda send-plan` covers cron-only setups.
 

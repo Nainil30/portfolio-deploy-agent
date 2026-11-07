@@ -8,7 +8,7 @@ Use this to present the project **without running it**. The step-by-step build s
 
 > "I built an open-source Telegram co-pilot for long-term investors. You tell it your monthly amount, the stocks and ETFs you want with target percentages, and your money goal. A one-minute setup wizard does that, or you write a three-line YAML file. Every payday it sends exactly what to buy and why, enforces rules like 'no single stock above 5%', keeps your holdings in sync with one tap, and when the market drops it sends the numbers and the plan instead of a sell signal.
 >
-> The key design decision is that **the rules decide and the AI explains**. Every dollar comes from deterministic, unit-tested code. An optional LLM answers plain-English questions through tools, but it can only *propose* a write, and the user confirms it with a button. It costs nothing to run, works with any broker, currency or Yahoo ticker, and has 118 tests."
+> The key design decision is that **the rules decide and the AI explains**. Every dollar comes from deterministic, unit-tested code. An optional LLM answers plain-English questions through tools, but it can only *propose* a write, and the user confirms it with a button. It costs nothing to run, works with any broker, currency or Yahoo ticker, and has 119 tests."
 
 ## 2. The 2-minute version
 
@@ -24,7 +24,7 @@ Use this to present the project **without running it**. The step-by-step build s
    - Two-tier language handling: a free regex/keyword parser first, then an optional OpenAI-compatible tool-calling agent (Groq/Gemini/Ollama).
    - Its system prompt is generated from the user's own plan.
    - Tools are read-only; the one write tool needs a human tap.
-5. **Result.** Setup in under five minutes, $0 to run, 118 offline tests with CI, Docker for a free VM. It started as my personal bot and I generalized it for anyone.
+5. **Result.** Setup in under five minutes, $0 to run, 119 offline tests with CI, Docker for a free VM. It started as my personal bot and I generalized it for anyone.
 
 ## 3. Walk through it without running it (5 slides or a screen share of the README)
 
@@ -87,4 +87,4 @@ Read-only brokerage sync, look-through exposure (NVDA inside VOO/QQQM/SMH), tax 
 1. `pda demo`: the payday list, guardrails, goal, extra cash and stress test.
 2. `pda --offline --strategy examples/three_fund.yaml plan`: the simplest auto plan.
 3. In Telegram: 📋 Plan → ✅ → `/history` → `/undo` → `/set monthly 3000` → "should I sell?"
-4. `pytest -q`: 118 green.
+4. `pytest -q`: 119 green.
