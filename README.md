@@ -137,15 +137,50 @@ ruff check src tests
 
 CI runs both on Python 3.11 and 3.12 for every push.
 
-## What changed from v1
+## How a month works, step by step
 
-v1 was a LangGraph pipeline that sent a daily push. v2 is an interactive tool built around your actual plan. See [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) for the full reasoning. The short version:
-- The **ledger** replaced hand-edited YAML holdings: one tap records a month's buys, and holdings stay correct.
-- **GitHub Actions + SQLite lost state every run.** v2 runs on any machine that keeps state, or uses `send-plan` for cron.
-- The **reflection loop** re-ran identical math. It's replaced by guardrails that actually change the plan and explain why.
-- **Dip-timing tranches** were dropped: your plan is a fixed split with new-money rebalancing.
-- **No LLM key needed.** The LLM is now an optional explainer, not a required step.
-- Removed the committed `.venv` (16k files), the database, and personal holdings from the repo.
+1. **On the 15th at 9:30 AM** the bot loads your holdings from the ledger and fetches live prices from Yahoo Finance.
+2. **It builds the buy list.** It starts from the fixed split (VOO $650, VHT $250, and so on) and scales it if you ask for a different amount.
+3. **It fills the stock slot.** The six candidates are ranked by how far each sits below its target. The $400 goes to the top one, as far as its cap allows; any leftover goes to the next, then to VOO.
+4. **The guardrails run, in order:**
+   - Clamp anything negative (buy-only).
+   - Trim any stock that would pass its cap.
+   - Move QQQM money to VOO if VOO would drop below 3× QQQM.
+   - Keep VHT and BRK.B as the biggest non-AI buys.
+
+   Every change becomes a one-line explanation in the message.
+5. **You place the orders in Fidelity** and tap **✅ I bought these**. The bot records each buy at the current price, so your holdings stay accurate. Tapping twice can't double-count, and `/undo` reverses it.
+6. **Each weekday after the market closes** the bot saves a snapshot. If the portfolio is newly 10/20/30% below its peak, it sends one calm "hold the line" message. On Sundays it sends a digest, with a nudge if the month's buys aren't recorded yet.
+7. **Any time** you can ask for `/portfolio`, `/guardrails`, `/goal` or `/stress`, or just type "bought 400 of nvda" or "got a 5k bonus".
+
+---
+
+## What was done in v2, and why
+
+v1 was a LangGraph pipeline that sent a daily Telegram push. A review of it turned up real bugs, so v2 is a ground-up rebuild around the written plan above.
+
+| Area | v1 (before) | v2 (now) | Why it matters |
+|---|---|---|---|
+| Strategy | Category targets split evenly across tickers; dip-timing tranches (60/25/15) | Exact per-ticker targets, fixed $2k split + stock slot, from `strategy.yaml` | Matches the actual plan; no market timing |
+| Validation | Loose (`enabled: true7` slipped through) | Strict: targets = 100%, split = budget, caps ≥ targets, cushions largest | A typo stops the bot instead of producing a wrong buy list |
+| Guardrails | One cap, measured against the monthly budget | Caps on the post-buy portfolio, VOO ≥ 3× QQQM, DELL 3%, cushions, buy-only. Each one moves money and explains why | Enforces the rules from the plan |
+| "Reflection" | A LangGraph loop that re-ran the same math, so it could never change the result | Removed; the guardrails are the real check | No fake agent steps |
+| Holdings | Hand-edited YAML, so it went stale | Append-only SQLite ledger: ✅ button, `/bought`, Fidelity CSV import, `/undo` | One tap a month keeps everything accurate |
+| State | GitHub Actions + SQLite reset every run, so the same tranche was re-sent daily | A long-running bot with a persistent DB (or `send-plan` for cron) | Reminders fire once, and "already done" is remembered |
+| Telegram | Send-only plain text | Commands, buttons, keyboard, file upload, chat-id auth, scheduled jobs | A two-way assistant, not a notification |
+| AI | Required Groq key; the LLM wrote a summary paragraph | Optional. Rule-based parser first, then a tool-calling LLM that can only read data or *propose* a buy | Free, grounded in real numbers, human-confirmed writes |
+| Behaviour | None | Drawdown alerts, stress test, goal projection; "should I sell?" gets the stress test, not a sell signal | Protects against the biggest risk to the plan: panic-selling |
+| Repo hygiene | Committed `.venv` (16k files), DB and personal holdings | All gitignored; secrets in `.env` | Fast clone, no personal data |
+| Quality | A few tests that needed the network | 77 offline tests, ruff, CI on 3.11/3.12, Docker | Safe to change, easy to deploy |
+
+### Bugs the tests caught during the rebuild
+- **Cushion vs cap:** when BRK.B hit its 7% cap, the cushion rule also cut the gold buy down to BRK.B's reduced amount. Fixed: a cushion held back by its own cap no longer sets the floor.
+- **Rounding:** QQQM's allowed buy of $37.50 rounded up to $38 and left VOO $2 short of 3×. Fixed: guardrail limits round *down*.
+
+### A decision you should know about
+Your plan targets **BRK.B at 7%**, which conflicts with "no single stock above 5%". Berkshire is a diversified holding company, so it has its own cap equal to its 7% target. To hold it to 5% instead, change `per_ticker_caps` in `config/strategy.yaml`, and lower its target to match; the startup check rejects any target above its cap.
+
+For the interview version of all this (pitch, build steps, trade-offs, likely questions and a demo script), see **[docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md)**.
 
 ---
 
