@@ -21,7 +21,7 @@ So I built **Portfolio Deploy Agent**:
 
 The design choice I'm proudest of: **the rules decide, the AI explains.** Every dollar comes from deterministic, tested code. The optional LLM (free Groq/Gemini, or local Ollama) answers questions through tools and can only *propose* a change; you confirm it with a button.
 
-Under the hood: Python, python-telegram-bot, SQLite (an append-only ledger with undo), an OpenAI-compatible tool-calling agent, 118 tests, CI and Docker. It's $0 to run and self-hosted, so your data stays yours.
+Under the hood: Python, python-telegram-bot, SQLite (an append-only ledger with undo), an OpenAI-compatible tool-calling agent, 119 tests, CI and Docker. It's $0 to run and self-hosted, so your data stays yours.
 
 Setup takes 5 minutes: `pda init` asks six questions and writes your plan.
 
@@ -43,7 +43,7 @@ You set your monthly amount, target stocks/ETFs and money goal → every payday 
 
 AI is optional and can't move money on its own: the rules decide, the LLM explains.
 
-Python · Telegram · SQLite · tool-calling LLM · 118 tests · $0 to run
+Python · Telegram · SQLite · tool-calling LLM · 119 tests · $0 to run
 → https://github.com/Nainil30/portfolio-deploy-agent
 
 #Python #AI #OpenSource #Investing
@@ -60,7 +60,7 @@ My answer in Portfolio Deploy Agent (an open-source Telegram investing co-pilot)
 2️⃣ **Two-tier language handling.** A regex/keyword parser handles the common messages for free ("bought 400 of VOO", "got a 5k bonus"). Only the rest goes to an OpenAI-compatible tool-calling agent (Groq/Gemini/Ollama), whose system prompt is generated from the user's own plan.
 3️⃣ **Least-privilege tools.** All tools are read-only except `propose_buy`, which only returns "pending". A Telegram button is the only path that writes.
 4️⃣ **Event-sourced ledger.** Holdings are replayed from an append-only SQLite log, which gives undo (even of imports), idempotent confirmations and an audit trail.
-5️⃣ **Testing the agent without a model.** A scripted fake LLM asserts on tool calls and side effects. 118 offline tests, CI on 3.11/3.12.
+5️⃣ **Testing the agent without a model.** A scripted fake LLM asserts on tool calls and side effects. 119 offline tests, CI on 3.11/3.12.
 
 Anyone can run it with their own amount, tickers, currency and goal, for $0, self-hosted.
 

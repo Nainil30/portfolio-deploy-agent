@@ -17,9 +17,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,dashboard]"
       - run: ruff check src tests
       - name: Validate every preset
         run: for f in examples/*.yaml; do case $f in *holdings*) ;; *) pda --strategy "$f" validate;; esac; done
       - run: pda demo
       - run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t pda .
+      - name: Demo runs inside the image
+        run: docker run --rm pda pda demo --extra 0
+      - name: Presets are bundled and valid
+        run: docker run --rm pda pda --strategy examples/india_index.yaml validate
+      - name: No personal files baked in
+        run: docker run --rm pda sh -c 'test ! -e config/strategy.yaml && test ! -e config/holdings.yaml && test ! -e .env'

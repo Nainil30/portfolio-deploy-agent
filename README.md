@@ -5,7 +5,7 @@
 Free to run · works with any broker · any currency · any Yahoo Finance ticker (US, India, UK, Canada, Europe, crypto) · AI optional
 
 [![CI](https://github.com/Nainil30/portfolio-deploy-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Nainil30/portfolio-deploy-agent/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Tests](https://img.shields.io/badge/tests-119%20passing-brightgreen)
 
 ---
 
@@ -314,7 +314,7 @@ portfolio-deploy-agent/
 │   └── __main__.py     the `pda` CLI
 ├── examples/           preset plans + example holdings
 ├── config/             demo_prices.yaml (your strategy.yaml / holdings.yaml are gitignored here)
-├── tests/              118 offline tests
+├── tests/              119 offline tests
 ├── dashboard/app.py    optional Streamlit dashboard
 ├── scripts/            one-command setup (setup.sh / setup.ps1)
 ├── docs/               CONFIGURATION · HOW_IT_WORKS · INTERVIEW_GUIDE · LINKEDIN_POST
@@ -327,7 +327,7 @@ portfolio-deploy-agent/
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                 # 118 tests, no network, ~3 seconds
+pytest -q                 # 119 tests, no network, a few seconds
 ruff check src tests
 ```
 What's covered:
@@ -340,7 +340,7 @@ What's covered:
 - **Telegram handlers**, driven with fake updates.
 - **The AI tool loop**, tested with a scripted fake model. It proves that `propose_buy` never writes.
 
-CI runs lint, validates every preset, runs the demo and runs the tests on Python 3.11 and 3.12.
+CI runs lint, validates every preset, runs the demo and the tests on Python 3.11 and 3.12, renders the dashboard headlessly, and builds the Docker image (checking that no personal files end up inside it).
 
 ---
 
