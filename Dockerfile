@@ -8,6 +8,7 @@ COPY src ./src
 RUN pip install --no-cache-dir .
 
 COPY config ./config
+COPY examples ./examples
 RUN useradd --create-home bot && mkdir -p /app/data && chown -R bot /app/data
 USER bot
 

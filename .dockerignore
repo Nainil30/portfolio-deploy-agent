@@ -1,0 +1,13 @@
+# Keep secrets and personal data out of the image (docker-compose mounts config/ and data/ at runtime)
+.env
+config/strategy.yaml
+config/holdings.yaml
+data/
+*.db
+*.csv
+.venv/
+venv/
+.git/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

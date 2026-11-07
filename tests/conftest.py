@@ -1,6 +1,6 @@
 import pytest
 
-from pda.config import load_strategy
+from pda.config import DEMO_STRATEGY, load_strategy
 from pda.ledger import Ledger
 from pda.prices import StaticPrices
 from pda.service import Service
@@ -16,7 +16,7 @@ HOLDINGS = [  # roughly the real starting portfolio: QQQM-heavy, NVDA over cap
 
 @pytest.fixture
 def strategy():
-    return load_strategy()
+    return load_strategy(DEMO_STRATEGY)
 
 
 @pytest.fixture

@@ -38,7 +38,7 @@ from pda.service import Service, ServiceError
 log = logging.getLogger(__name__)
 
 KEYBOARD = ReplyKeyboardMarkup(
-    [["📋 Plan", "💼 Portfolio", "🎯 Drift"], ["🛡 Guardrails", "🏁 Goal", "🧾 History"]],
+    [["📋 Plan", "💼 Portfolio", "🎯 Drift"], ["🛡 Guardrails", "🏁 Goal", "⚙️ Settings"]],
     resize_keyboard=True,
     is_persistent=True,
 )
@@ -55,6 +55,8 @@ COMMANDS = [
     ("history", "Recent activity"),
     ("undo", "Undo the last record/import"),
     ("import", "How to import holdings"),
+    ("settings", "Your plan and settings"),
+    ("set", "Change: /set monthly 3000"),
     ("help", "How this works"),
 ]
 
@@ -109,8 +111,9 @@ class Bot:
         holdings = await self.run(self.service.ledger.holdings)
         html = fmt.HELP
         if not holdings:
-            html += ("\n\n<b>First step:</b> send me your Fidelity positions CSV "
-                     "(Accounts → Positions → Download), or a holdings.yaml file.")
+            html += ("\n\n<b>First step:</b> send me your broker's positions CSV "
+                     "(e.g. Fidelity: Accounts → Positions → Download), or a holdings.yaml file. "
+                     "Starting from zero? Just tap 📋 Plan.")
         await self.send(update, html)
 
     @guarded
@@ -209,6 +212,30 @@ class Bot:
         )
 
     @guarded
+    async def cmd_settings(self, update, context):
+        overrides = await self.run(self.service.ledger.settings)
+        await self.send(update, fmt.fmt_settings(self.service.strategy, overrides))
+
+    @guarded
+    async def cmd_set(self, update, context):
+        args = context.args or []
+        if args and args[0].lower() == "reset":
+            await self.run(self.service.reset_settings)
+            self._reschedule(getattr(context, "application", None))
+            await self.send(update, "↩️ Settings reset to strategy.yaml.\n\n"
+                            + fmt.fmt_settings(self.service.strategy, {}))
+            return
+        if len(args) != 2:
+            await self.send(update, "Usage: <code>/set monthly 3000</code> · <code>/set goal 250k</code> · "
+                            "<code>/set day 15</code> · <code>/set return 6</code> · <code>/set reset</code>")
+            return
+        key, _ = await self.run(self.service.set_setting, args[0], args[1])
+        if key == "reminder_day":
+            self._reschedule(getattr(context, "application", None))
+        overrides = await self.run(self.service.ledger.settings)
+        await self.send(update, "✅ Saved.\n\n" + fmt.fmt_settings(self.service.strategy, overrides))
+
+    @guarded
     async def cmd_history(self, update, context):
         txs = await self.run(self.service.history, 15)
         await self.send(update, fmt.fmt_history(txs))
@@ -222,9 +249,12 @@ class Bot:
     async def cmd_import(self, update, context):
         await self.send(update, (
             "📥 <b>Import holdings</b>\n"
-            "Fidelity: Accounts &amp; Trade → Portfolio → Positions → ⤓ Download (CSV). "
-            "Send that file here.\n"
-            "Or send a <code>holdings.yaml</code> (see config/holdings.example.yaml).\n\n"
+            "Download your positions as CSV from your broker and send the file here.\n"
+            "• Fidelity: Accounts &amp; Trade → Portfolio → Positions → ⤓ Download\n"
+            "• Schwab: Accounts → Positions → Export\n"
+            "• Vanguard: Holdings → Download\n"
+            "• Any broker: a CSV with columns <code>ticker,shares,avg_cost</code>\n"
+            "Or send a <code>holdings.yaml</code> (see examples/holdings.example.yaml).\n\n"
             "An import <b>replaces</b> the ledger with the broker's numbers. /undo restores the previous state."
         ))
 
@@ -274,7 +304,7 @@ class Bot:
                 ]])
             await self.send(update, fmt.esc(reply.text), markup)
             return
-        await self.send(update, "I didn't catch that. Try “bought 400 of NVDA”, “I got a 5k bonus”, or /help.")
+        await self.send(update, "I didn't catch that. Try “bought 400 of VOO”, “I got a 5k bonus”, or /help.")
 
     async def _dispatch(self, intent: intents.Intent, update, context) -> None:
         context.args = []
@@ -295,7 +325,7 @@ class Bot:
             handler = {
                 "portfolio": self.cmd_portfolio, "drift": self.cmd_drift, "guardrails": self.cmd_guardrails,
                 "goal": self.cmd_goal, "stress": self.cmd_stress, "history": self.cmd_history,
-                "undo": self.cmd_undo, "help": self.cmd_help,
+                "undo": self.cmd_undo, "help": self.cmd_help, "settings": self.cmd_settings,
             }[name]
             await handler.__wrapped__(self, update, context)
 
@@ -347,7 +377,9 @@ class Bot:
         if hit:
             level, dd = hit
             await context.bot.send_message(
-                self.chat_id, fmt.fmt_drawdown_alert(level, dd, snap, self.service.strategy.monthly_amount),
+                self.chat_id,
+                fmt.fmt_drawdown_alert(level, dd, snap, self.service.strategy.monthly_amount,
+                                       self.service.strategy.guardrails.cushions),
                 parse_mode=ParseMode.HTML,
             )
 
@@ -375,7 +407,7 @@ class Bot:
             ("portfolio", self.cmd_portfolio), ("drift", self.cmd_drift), ("guardrails", self.cmd_guardrails),
             ("goal", self.cmd_goal), ("stress", self.cmd_stress), ("bought", self.cmd_bought),
             ("sold", self.cmd_sold), ("history", self.cmd_history), ("undo", self.cmd_undo),
-            ("import", self.cmd_import),
+            ("import", self.cmd_import), ("settings", self.cmd_settings), ("set", self.cmd_set),
         ]
         app.add_handler(CommandHandler("start", self.cmd_start))
         for name, fn in h:
@@ -385,15 +417,27 @@ class Bot:
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.on_text))
         app.add_error_handler(self._on_error)
 
-        if self.chat_id is not None and app.job_queue is not None:
-            s = self.service.strategy
-            tz = s.timezone
-            jq = app.job_queue
-            jq.run_monthly(self.job_monthly, when=_at(s.reminder_time, tz), day=s.reminder_day, name="monthly")
-            jq.run_daily(self.job_daily, time=_at(s.daily_check_time, tz), days=(1, 2, 3, 4, 5), name="daily")
-            if s.weekly_digest:
-                jq.run_daily(self.job_weekly, time=_at(time(10, 0), tz), days=(0,), name="weekly")
+        self._schedule(app)
         return app
+
+    def _schedule(self, app: Application) -> None:
+        if self.chat_id is None or app.job_queue is None:
+            return
+        s = self.service.strategy
+        tz = s.timezone
+        jq = app.job_queue
+        jq.run_monthly(self.job_monthly, when=_at(s.reminder_time, tz), day=s.reminder_day, name="monthly")
+        jq.run_daily(self.job_daily, time=_at(s.daily_check_time, tz), days=(1, 2, 3, 4, 5), name="daily")
+        if s.weekly_digest:
+            jq.run_daily(self.job_weekly, time=_at(time(10, 0), tz), days=(0,), name="weekly")
+
+    def _reschedule(self, app: Application | None) -> None:
+        """Re-create jobs after /set day N so the new reminder day applies immediately."""
+        if app is None or app.job_queue is None:
+            return
+        for job in app.job_queue.jobs():
+            job.schedule_removal()
+        self._schedule(app)
 
 
 def _at(t: time, tz) -> time:

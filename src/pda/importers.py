@@ -1,4 +1,5 @@
-"""Import holdings from a Fidelity positions CSV or a holdings YAML.
+"""Import holdings from a broker positions CSV (Fidelity, Schwab, Vanguard,
+Zerodha-style or a plain ticker,shares,avg_cost file) or a holdings YAML.
 
 Broker CSVs are messy (header junk, footers, "$1,234.56", money-market rows),
 so the parser looks for the header row by column names instead of position.
@@ -14,10 +15,13 @@ import yaml
 
 from pda.config import normalize_ticker
 
-SYMBOL_COLS = ("symbol", "ticker")
-QTY_COLS = ("quantity", "shares", "qty")
-AVG_COLS = ("average cost basis", "avg cost basis", "cost basis per share", "avg_cost", "average cost")
-TOTAL_COST_COLS = ("cost basis total", "cost basis", "total cost basis")
+SYMBOL_COLS = ("symbol", "ticker", "instrument", "stock symbol", "security symbol")
+QTY_COLS = ("quantity", "shares", "qty", "qty.", "units", "share quantity")
+AVG_COLS = (
+    "average cost basis", "avg cost basis", "cost basis per share", "avg_cost", "average cost",
+    "avg. cost", "avg cost", "average price", "avg price", "cost/share", "cost per share", "buy price",
+)
+TOTAL_COST_COLS = ("cost basis total", "cost basis", "total cost basis", "total cost", "invested")
 
 # Cash / money-market sweep symbols to ignore.
 CASH_SYMBOLS = {"SPAXX", "FDRXX", "FCASH", "CORE", "PENDING ACTIVITY", "SPRXX", "FZFXX"}
@@ -106,4 +110,4 @@ def parse_file(filename: str, content: bytes | str) -> list[tuple[str, float, fl
         return parse_yaml(text)
     if filename.lower().endswith(".csv"):
         return parse_csv(text)
-    raise ImportErrorBadFile("Send a .csv (Fidelity positions export) or a .yaml holdings file.")
+    raise ImportErrorBadFile("Send a .csv (broker positions export, or ticker,shares,avg_cost) or a .yaml holdings file.")

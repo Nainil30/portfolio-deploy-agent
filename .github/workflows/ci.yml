@@ -19,5 +19,7 @@ jobs:
           cache: pip
       - run: pip install -e ".[dev]"
       - run: ruff check src tests
-      - run: pda validate
+      - name: Validate every preset
+        run: for f in examples/*.yaml; do case $f in *holdings*) ;; *) pda --strategy "$f" validate;; esac; done
+      - run: pda demo
       - run: pytest -q

@@ -54,6 +54,11 @@ CREATE TABLE IF NOT EXISTS alerts (
     key TEXT PRIMARY KEY,
     ts  TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS settings (   -- overrides changed from Telegram (/set ...)
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -257,3 +262,19 @@ class Ledger:
                 "INSERT OR IGNORE INTO alerts (key, ts) VALUES (?, ?)",
                 (key, datetime.now().isoformat(timespec="seconds")),
             )
+
+    # ── settings overrides ──────────────────────────────────────────────
+    def settings(self) -> dict[str, str]:
+        return {r["key"]: r["value"] for r in self._conn.execute("SELECT key, value FROM settings")}
+
+    def set_setting(self, key: str, value: str) -> None:
+        with self._tx() as c:
+            c.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+
+    def clear_settings(self) -> None:
+        with self._tx() as c:
+            c.execute("DELETE FROM settings")
