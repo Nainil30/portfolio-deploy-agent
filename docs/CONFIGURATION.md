@@ -58,9 +58,9 @@ Your target weight for every ticker. **The weights must add up to exactly 100.**
 
 ```yaml
 targets:
-  VOO:  30                                   # shorthand: just the %
-  QQQM: { pct: 10, bucket: core_etf, ai: true }
-  NVDA: { pct: 5,  bucket: stock,    ai: true }
+  VTI:  35                                   # shorthand: just the %
+  QQQ:  { pct: 10, bucket: core_etf, ai: true }
+  NVDA: { pct: 4,  bucket: stock,    ai: true }
   BND:  { pct: 10, bucket: bond }
 ```
 
@@ -79,9 +79,9 @@ Tickers you own but don't list here are tracked and valued, but never bought.
 |---|---|---|
 | `never_sell` | `true` | The plan never outputs a sell. (`/sold` exists only to keep your records accurate, and asks you to confirm) |
 | `max_single_stock_pct` | `10` | No `bucket: stock` position may pass this % of the **post-buy** portfolio. Set `null` for no cap |
-| `per_ticker_caps` | `{}` | Overrides for specific tickers, e.g. `{DELL: 3}` for your employer's stock, `{BRK.B: 7}` for a diversified holding company |
-| `core_ratio` | none | `{ticker: VOO, versus: QQQM, min_multiple: 3}` keeps VOO ≥ 3× QQQM after every buy; any excess QQQM money moves to VOO |
-| `cushions` | `[]` | Defensive funds (e.g. `[VHT, BRK.B]`) that must stay the biggest non-theme buys |
+| `per_ticker_caps` | `{}` | Overrides for specific tickers, e.g. `{AAPL: 3}` if you already get your employer's stock, `{BRK.B: 6}` for a diversified holding company |
+| `core_ratio` | none | `{ticker: VTI, versus: QQQ, min_multiple: 3}` keeps VTI ≥ 3× QQQ after every buy; any excess QQQ money moves to VTI |
+| `cushions` | `[]` | Defensive funds (e.g. `[BND, XLV]`) that must stay the biggest non-theme buys |
 | `overflow_ticker` | the largest target | Receives money that a guardrail frees up. It's never capped, so pick a broad fund |
 
 **Order applied:** buy-only → caps → core ratio → cushions. Every adjustment is explained in the message.
@@ -112,4 +112,5 @@ Tickers you own but don't list here are tracked and valued, but never bought.
 | `LLM_PROVIDER` | `groq` (default), `gemini`, `openrouter`, `ollama` or `none` |
 | `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENROUTER_API_KEY` | The optional AI assistant |
 | `LLM_MODEL`, `LLM_BASE_URL` | Any OpenAI-compatible model or endpoint |
-| `PDA_DB`, `PDA_STRATEGY`, `PDA_HOME` | Custom file locations (Docker sets these) |
+| `PDA_STRATEGY`, `PDA_DB` | Keep your plan and ledger somewhere else, e.g. a private folder outside the repo |
+| `PDA_HOME` | The project root (the Docker image sets it) |

@@ -14,7 +14,7 @@ Long-term investing is simple on paper: pick target weights, invest every month,
 2. **Buy-only.** There is no code path that outputs a sell. Rebalancing happens only with new money.
 3. **Explain every number.** Each guardrail that changes the plan leaves a one-line, human-readable reason.
 4. **Works with zero keys.** No AI key → a rule-based parser. No Telegram → the full CLI. No internet → demo prices.
-5. **Universal and private.** Any Yahoo ticker and any currency; self-hosted, so holdings never leave your machine.
+5. **Universal and private.** Any Yahoo ticker and any currency; self-hosted, so holdings never leave your machine. The repo ships only made-up example plans and holdings; a real plan (`config/strategy.yaml`), holdings, ledger and keys are gitignored, so the author's own portfolio runs on the same code without being published.
 
 ---
 
@@ -65,7 +65,7 @@ v1 was a LangGraph pipeline that sent a daily Telegram push. A full read-through
   - in fixed mode, the split already keeps the cushions as the largest defensive buys.
 - **Ticker normalization** that works internationally: `brk/b` → `BRK.B`, while `RELIANCE.NS`, `VOD.L` and `BTC-USD` are left as they are.
 
-*Example it caught in a real plan:* "BRK.B target 7% is above its cap 5%". The plan's own rules contradicted each other, and the fix (a per-ticker cap) is now explicit instead of the code silently choosing one.
+*Example of what it catches:* "BRK.B target 6% is above its cap 5%". The plan's own rules contradicted each other, and the fix (a per-ticker cap) is now explicit instead of the code silently choosing one.
 
 ### Step 3: A small domain model (`models.py`)
 These are plain dataclasses: `Position`, `Snapshot`, `Plan`, `BuyLine`, `Adjustment`, `RuleCheck`. The important one is **`Adjustment`**: every guardrail decision is recorded as structured data with a message. That makes the system explainable to the user, to the AI, and in tests.
@@ -106,12 +106,12 @@ There are two bugs the tests caught here, which make good interview stories:
 - **Rounding:** an allowed $37.50 rounded up to $38 and broke the 3× rule by $2. Fix: round limits down.
 - **Interacting rules:** a capped cushion lowered the floor and starved the gold buy. Fix: capped cushions are excluded from the floor.
 
-`check_portfolio` reports each configured rule as ✅/⚠️ with numbers, for example: *"VOO is only 1.3x QQQM (need 3x). QQQM buys go to VOO until about $15,504 more VOO is added."*
+`check_portfolio` reports each configured rule as ✅/⚠️ with numbers, for example: *"VTI is only 1.4x QQQ (need 3x). QQQ buys go to VTI until about $17,800 more VTI is added."*
 
 ### Step 8: Behavioural features (`insights.py`)
 - **Goal projection:** months to the goal at 4/7/10%/yr, with the dates. It's clearly labelled as an assumption.
 - **Drawdown:** measured on *unrealized gain* rather than raw value, so a new deposit can't hide a loss and a skipped month can't fake one. The alert fires **once per level per peak**.
-- **Stress test:** each position is shocked by its bucket (themed stocks harder, gold up). The message turns "-27%" into "your next $2,000 buys ~40% more shares".
+- **Stress test:** each position is shocked by its bucket (themed stocks harder, gold up). The message turns "-25%" into "your next $1,500 buys ~39% more shares".
 - **"Should I sell?"** never reaches a sell path; it's answered with the stress test and the plan's rule.
 
 ### Step 9: Language in two tiers
@@ -149,7 +149,7 @@ There are two bugs the tests caught here, which make good interview stories:
 | 1 | Answer the wizard | "✅ Saved config/strategy.yaml" |
 | 2 | `pda plan` | Their own buy list with live prices |
 | 4 | Create a bot with @BotFather, paste the token, `pda bot`, `/start` | Their chat id; after a restart the bot is locked to them |
-| 5 | Send their broker CSV | "📥 Imported 17 positions. Portfolio: $42,491" |
+| 5 | Send their broker CSV | "📥 Imported 11 positions. Portfolio: $47,962" (the example holdings) |
 | Every payday | Tap ✅ after buying | "📝 Bought, ledger updated" |
 | In a crash | Nothing | One "🧘 Hold the line" message with the numbers and the plan's rule |
 

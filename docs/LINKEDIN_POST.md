@@ -14,14 +14,14 @@ So I built **Portfolio Deploy Agent**:
 
 🗓 Every payday it sends your buy list, with a reason for each line
 🎯 Your plan, your rules: monthly amount, target stocks/ETFs and %, money goal
-🛡 Guardrails in code: max % per stock, "VOO ≥ 3× QQQM", defensive funds, never sell
+🛡 Guardrails in code: max % per stock, "VTI ≥ 3× QQQ", defensive funds, never sell
 ✅ One tap after you buy keeps your holdings in sync (or import your broker's CSV)
 🧘 When the market drops 10/20/30%, you get the numbers and the plan, not a sell signal
 🌍 Any currency and any Yahoo ticker: US, India (.NS), UK (.L), Canada, crypto
 
 The design choice I'm proudest of: **the rules decide, the AI explains.** Every dollar comes from deterministic, tested code. The optional LLM (free Groq/Gemini, or local Ollama) answers questions through tools and can only *propose* a change; you confirm it with a button.
 
-Under the hood: Python, python-telegram-bot, SQLite (an append-only ledger with undo), an OpenAI-compatible tool-calling agent, 121 tests, CI and Docker. It's $0 to run and self-hosted, so your data stays yours.
+Under the hood: Python, python-telegram-bot, SQLite (an append-only ledger with undo), an OpenAI-compatible tool-calling agent, 121 tests, CI and Docker. It's $0 to run and self-hosted, so your data stays yours: your plan and holdings live in gitignored files, and the repo ships only made-up examples.
 
 Setup takes 5 minutes: `pda init` asks six questions and writes your plan.
 
@@ -57,7 +57,7 @@ How do you put an LLM in a money workflow without letting it touch the money?
 My answer in Portfolio Deploy Agent (an open-source Telegram investing co-pilot):
 
 1️⃣ **Deterministic core.** A pure-function engine builds the monthly buy list from a validated YAML plan. Guardrails (position caps on the post-buy portfolio, a closed-form "A ≥ m×B" ratio, defensive cushions, buy-only) *move* money and record a human-readable reason for each change.
-2️⃣ **Two-tier language handling.** A regex/keyword parser handles the common messages for free ("bought 400 of VOO", "got a 5k bonus"). Only the rest goes to an OpenAI-compatible tool-calling agent (Groq/Gemini/Ollama), whose system prompt is generated from the user's own plan.
+2️⃣ **Two-tier language handling.** A regex/keyword parser handles the common messages for free ("bought 400 of VTI", "got a 5k bonus"). Only the rest goes to an OpenAI-compatible tool-calling agent (Groq/Gemini/Ollama), whose system prompt is generated from the user's own plan.
 3️⃣ **Least-privilege tools.** All tools are read-only except `propose_buy`, which only returns "pending". A Telegram button is the only path that writes.
 4️⃣ **Event-sourced ledger.** Holdings are replayed from an append-only SQLite log, which gives undo (even of imports), idempotent confirmations and an audit trail.
 5️⃣ **Testing the agent without a model.** A scripted fake LLM asserts on tool calls and side effects. 121 offline tests, CI on 3.11/3.12.

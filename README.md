@@ -41,25 +41,27 @@ Portfolio Deploy Agent turns a written plan into a habit. It does the math, appl
 
 ## 2. What it looks like (no install needed)
 
-**Payday message** (the example "Core + stock slot" plan, $2,000/month):
-```
-🗓 Monthly buy list: $2,000
-Portfolio: $42,491
+All numbers below come from `pda demo`: a **made-up example plan** ("Core + satellites", $1,500/month toward $300k) on a made-up starting portfolio, priced with fixed demo prices. It isn't anyone's real portfolio. Your bot uses your own plan.
 
-VOO      $750  ≈1.103 sh
-SPCX     $400  ≈3.030 sh
-VHT      $250  ≈0.733 sh
-BRK.B    $200  ≈0.350 sh
-IAUM     $200  ≈4.938 sh
-SMH      $150  ≈0.323 sh
-SPMO      $50  ≈0.400 sh
+**Payday message:**
+```
+🗓 Monthly buy list: $1,500
+Portfolio: $47,962
+
+VTI      $625  ≈1.685 sh
+AMZN     $200  ≈0.760 sh
+XLV      $150  ≈0.794 sh
+BND      $150  ≈2.125 sh
+VXUS     $150  ≈1.847 sh
+BRK.B    $150  ≈0.263 sh
+GLD       $75  ≈0.211 sh
 Why
-• VOO: Monthly split (+$100 redirected)
-• SPCX: Stock slot: 0.0% vs 2.5% target (2.5 pts below, furthest below of 6 candidates)
-• VHT … SPMO: Monthly split
+• VTI: Monthly split (+$75 redirected)
+• AMZN: Stock slot: 2.2% vs 3% target (0.8 pts below, furthest below of 5 candidates)
+• XLV … GLD: Monthly split
 
 🛡 Guardrails applied
-• VOO is 1.3x QQQM (rule: at least 3x). $100 of the QQQM buy moved to VOO.
+• VTI is 1.4x QQQ (rule: at least 3x). $75 of the QQQ buy moved to VTI.
 
 [ ✅ I bought these ]  [ ⏭ Skip ]
 ```
@@ -74,25 +76,25 @@ BND       $50  ≈0.698 sh     • Gap fill: 0.0% vs 10% target
 
 **`/guardrails`**: your rules checked against the real portfolio:
 ```
-⚠️ Core ratio: VOO is only 1.3x QQQM (need 3x). QQQM buys go to VOO until about $15,504 more VOO is added.
-⚠️ Position caps: Over cap: NVDA 8.4% (cap 5%), GOOGL 5.4% (cap 5%), DELL 5.0% (cap 3%).
+⚠️ Core ratio: VTI is only 1.4x QQQ (need 3x). QQQ buys go to VTI until about $17,800 more VTI is added.
+⚠️ Position caps: Over cap: NVDA 9.8% (cap 5%), MSFT 5.6% (cap 5%), AAPL 4.5% (cap 3%).
    No new buys there. Don't sell: new money will shrink them over time.
 ✅ Never sell: 0 sells recorded. Keep it that way in a drop.
 ```
 
 **`/goal`** and **`/stress`**:
 ```
-🏁 Road to $155,000                       🌧 Stress test
-Now: $42,491 · investing $2,000/mo        AI sell-off (2022-style)  -$11,605 (-27%)
-   4%/yr → 49 mo (Dec 2030)               Broad bear market (-30%)  -$12,212 (-29%)
-   7%/yr → 45 mo (Aug 2030)               In the worst case your $2,000 buys ~40% more shares.
-  10%/yr → 41 mo (Apr 2030)               The plan in a drop: keep buying, don't sell.
+🏁 Road to $300,000                       🌧 Stress test
+Now: $47,962 · investing $1,500/mo        AI sell-off (2022-style)  -$12,135 (-25%)
+   4%/yr → 124 mo (Mar 2037)              Broad bear market (-30%)  -$13,392 (-28%)
+   7%/yr → 105 mo (Aug 2035)              In the worst case your $1,500 buys ~39% more shares.
+  10%/yr → 92 mo (Jul 2034)               The plan in a drop: keep buying, don't sell.
 ```
 
 **Chat like a person:**
 ```
 You:  bought 400 of nvda          Bot: 📝 Recorded NVDA $400 (2.1164 sh @ $189.00). Wrong? /undo
-You:  I got a 5k bonus            Bot: 💵 Extra-cash buy list: $5,000 (VHT $1,148, BRK.B $1,004, …)
+You:  I got a 5k bonus            Bot: 💵 Extra-cash buy list: $5,000 (VTI $1,227, XLV $1,172, BND $938, …)
 You:  should I sell everything?   Bot: 🛑 No selling. That's the one rule the plan depends on. (+ stress test)
 ```
 
@@ -164,7 +166,7 @@ Your timezone [America/New_York]: Europe/Berlin
 Start from:
   1) Three-fund: VTI 60 / VXUS 30 / BND 10 (simplest)
   2) Dividend income: SCHD, VIG, VYM + a few dividend stocks
-  3) Core + stock slot: S&P core, sector ETFs, gold, stocks, all guardrails
+  3) Core + satellites: total-market core, ETFs, bonds, gold, a few stocks, all guardrails
   4) India index (₹): Nifty 50, Next 50, Nasdaq 100, gold (NSE)
   5) Custom: type your own tickers and %
 Choose [5]: 5
@@ -185,8 +187,10 @@ Targets that don't add up to 100% are scaled for you. Non-interactive use: `pda 
 |---|---|---|
 | [`three_fund.yaml`](examples/three_fund.yaml) | auto, $500/mo | The minimum: 3 lines of targets |
 | [`dividend_income.yaml`](examples/dividend_income.yaml) | auto, $1,000/mo | 5% stock cap, cushion funds |
-| [`core_plus_stock_slot.yaml`](examples/core_plus_stock_slot.yaml) | fixed, $2,000/mo | Every guardrail: split, stock slot, core ratio, per-ticker caps |
+| [`core_satellite.yaml`](examples/core_satellite.yaml) | fixed, $1,500/mo | Every guardrail: split, stock slot, core ratio, per-ticker caps |
 | [`india_index.yaml`](examples/india_index.yaml) | auto, ₹25,000/mo | NSE tickers, ₹, Asia/Kolkata |
+
+All presets are made-up starting points. Pick the closest one and replace the tickers, percentages and amounts with yours.
 
 ### The smallest valid plan
 ```yaml
@@ -202,6 +206,19 @@ pda import Portfolio_Positions.csv     # Fidelity, Schwab, Vanguard, Zerodha-sty
 pda import config/holdings.yaml        # see examples/holdings.example.yaml
 ```
 Or just send the file to the bot. Starting from zero? Skip this; the plan works from $0.
+
+### Where your plan lives (and why it never ends up on GitHub)
+The repo ships **only made-up examples**. Everything about *your* money lives in files that git ignores:
+
+| File | What's in it | Committed? |
+|---|---|---|
+| `config/strategy.yaml` | your plan: amount, goal, tickers, %, split, guardrails (written by `pda init`) | ❌ gitignored |
+| `config/holdings.yaml` | your starting positions, if you import from YAML | ❌ gitignored |
+| `data/pda.db` | your ledger: every buy, plan, snapshot and `/set` change | ❌ gitignored |
+| `.env` | your Telegram token, chat id and AI key | ❌ gitignored |
+| `examples/*.yaml`, `config/demo_prices.yaml` | made-up presets, holdings and prices for the demo and tests | ✅ |
+
+So you can fork the repo, run your real portfolio on it, and push code changes without ever publishing your numbers. Someone who clones it gets the examples and the wizard, never your plan. Want to keep your files somewhere else entirely (a private folder or a synced drive)? Set `PDA_STRATEGY=/path/to/strategy.yaml` and `PDA_DB=/path/to/pda.db` (in `.env` or your shell). The Docker image is checked in CI to contain none of these files.
 
 ---
 
@@ -227,7 +244,7 @@ Or just send the file to the bot. Starting from zero? Skip this; the plan works 
 | 💼 **Portfolio** · 🎯 **Drift** | Value, gain, buckets vs target · every ticker vs target |
 | 🛡 **Guardrails** | ✅/⚠️ for each of your rules, with numbers |
 | 🏁 **Goal** · `/stress` | Months to your goal · bad-year scenarios |
-| `/bought VOO 650` · `/bought NVDA 2 sh @ 180` | Record a buy by amount or shares |
+| `/bought VTI 500` · `/bought NVDA 2 sh @ 180` | Record a buy by amount or shares |
 | `/history` · `/undo` | Recent activity · undo the last record **or import** |
 | ⚙️ **Settings** · `/set monthly 3000` · `/set goal 250k` · `/set day 15` · `/set reset` | View or change your plan from chat |
 | *send a .csv / .yaml* | Replace holdings with your broker's numbers (undoable) |
@@ -235,7 +252,7 @@ Or just send the file to the bot. Starting from zero? Skip this; the plan works 
 
 **Automatic:** your buy list on your reminder day (skipped if already recorded) · a weekday after-close check that alerts only when a new drawdown level is crossed · a Sunday digest with a nudge if this month isn't done.
 
-**The same from the terminal:** `pda plan`, `pda extra 5000`, `pda portfolio`, `pda drift`, `pda guardrails`, `pda goal`, `pda stress`, `pda bought VOO 650`, `pda history`, `pda undo`, `pda set monthly 3000`, `pda ask "…"`. Add `--offline` to use demo prices.
+**The same from the terminal:** `pda plan`, `pda extra 5000`, `pda portfolio`, `pda drift`, `pda guardrails`, `pda goal`, `pda stress`, `pda bought VTI 500`, `pda history`, `pda undo`, `pda set monthly 3000`, `pda ask "…"`. Add `--offline` to use demo prices.
 
 **Dashboard (optional):** `pip install -e ".[dashboard]"` then `streamlit run dashboard/app.py`.
 
@@ -371,7 +388,7 @@ CI runs lint, validates every preset, runs the demo and the tests on Python 3.11
 | [docs/INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md) | Presenting the project: pitch, decisions, Q&A |
 | [docs/LINKEDIN_POST.md](docs/LINKEDIN_POST.md) | A ready-to-post announcement |
 
-**Roadmap:** read-only brokerage sync · look-through exposure (NVDA inside VOO/QQQM) · multi-user hosted version · tax-lot tracking · an evaluation set for comparing AI providers.
+**Roadmap:** read-only brokerage sync · look-through exposure (e.g. NVDA inside VTI/QQQ) · multi-user hosted version · tax-lot tracking · an evaluation set for comparing AI providers.
 
 MIT licensed. Contributions welcome: open an issue with your plan style or broker CSV format.
 

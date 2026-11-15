@@ -1,27 +1,24 @@
-# holdings.example.yaml — starting positions for the ledger.
+# holdings.example.yaml: made-up starting positions for the demo and tests.
+# Not a real portfolio. It is deliberately a little messy (QQQ-heavy, NVDA
+# over its cap, no XLV or BRK.B yet) so the demo shows the guardrails working.
 #
-#   cp examples/holdings.example.yaml config/holdings.yaml   (gitignored)
+# For YOUR portfolio, either:
+#   cp examples/holdings.example.yaml config/holdings.yaml   (gitignored), edit it, then
 #   pda import config/holdings.yaml
-#
-# Or skip this file entirely: export "Positions" as CSV from Fidelity and
-# send it to the bot (or run `pda import Portfolio_Positions.csv`).
+# or export "Positions" as CSV from your broker and send it to the bot
+# (or run `pda import Portfolio_Positions.csv`).
 #
 # avg_cost is per share. Tickers not in strategy.yaml are tracked but never bought.
 
 holdings:
-  - { ticker: VOO,   shares: 18.0,  avg_cost: 560.00 }
-  - { ticker: QQQM,  shares: 34.0,  avg_cost: 225.00 }
-  - { ticker: SCHD,  shares: 120.0, avg_cost: 27.00 }
-  - { ticker: SMH,   shares: 2.3,   avg_cost: 340.00 }
-  - { ticker: VXUS,  shares: 13.0,  avg_cost: 77.00 }
-  - { ticker: IAUM,  shares: 46.0,  avg_cost: 42.00 }
-  - { ticker: NVDA,  shares: 19.0,  avg_cost: 134.00 }
-  - { ticker: GOOGL, shares: 8.0,   avg_cost: 316.00 }
-  - { ticker: DELL,  shares: 6.4,   avg_cost: 264.00 }
-  - { ticker: PLTR,  shares: 8.9,   avg_cost: 125.00 }
-  - { ticker: AMZN,  shares: 3.7,   avg_cost: 212.00 }
-  - { ticker: MSFT,  shares: 1.5,   avg_cost: 401.00 }
-  - { ticker: TSLA,  shares: 1.2,   avg_cost: 393.00 }
-  - { ticker: AMD,   shares: 0.6,   avg_cost: 313.00 }
-  - { ticker: LLY,   shares: 0.5,   avg_cost: 822.00 }
-  - { ticker: INTC,  shares: 2.8,   avg_cost: 71.00 }
+  - { ticker: VTI,  shares: 40.0, avg_cost: 300.00 }
+  - { ticker: QQQ,  shares: 16.0, avg_cost: 520.00 }
+  - { ticker: VXUS, shares: 60.0, avg_cost: 70.00 }
+  - { ticker: BND,  shares: 40.0, avg_cost: 72.00 }
+  - { ticker: GLD,  shares: 6.0,  avg_cost: 250.00 }
+  - { ticker: NVDA, shares: 25.0, avg_cost: 120.00 }
+  - { ticker: MSFT, shares: 5.0,  avg_cost: 410.00 }
+  - { ticker: AAPL, shares: 6.0,  avg_cost: 220.00 }
+  - { ticker: AMZN, shares: 4.0,  avg_cost: 190.00 }
+  - { ticker: COST, shares: 1.0,  avg_cost: 900.00 }
+  - { ticker: TSLA, shares: 2.0,  avg_cost: 250.00 }

@@ -51,7 +51,7 @@ COMMANDS = [
     ("guardrails", "Rule status"),
     ("goal", "Projection to your target"),
     ("stress", "Bad-year scenarios"),
-    ("bought", "Record a buy: /bought VOO 650"),
+    ("bought", "Record a buy: /bought VTI 500"),
     ("history", "Recent activity"),
     ("undo", "Undo the last record/import"),
     ("import", "How to import holdings"),
@@ -181,7 +181,7 @@ class Bot:
     async def cmd_bought(self, update, context):
         intent = intents.parse("bought " + " ".join(context.args or []))
         if not intent or intent.name != "buy":
-            await self.send(update, "Usage: <code>/bought VOO 650</code> · <code>/bought NVDA 2 sh @ 180</code>")
+            await self.send(update, "Usage: <code>/bought VTI 500</code> · <code>/bought NVDA 2 sh @ 180</code>")
             return
         await self._record_buy(update, intent.args)
 
@@ -304,7 +304,7 @@ class Bot:
                 ]])
             await self.send(update, fmt.md_to_html(reply.text), markup)
             return
-        await self.send(update, "I didn't catch that. Try “bought 400 of VOO”, “I got a 5k bonus”, or /help.")
+        await self.send(update, "I didn't catch that. Try “bought 400 of VTI”, “I got a 5k bonus”, or /help.")
 
     async def _dispatch(self, intent: intents.Intent, update, context) -> None:
         context.args = []

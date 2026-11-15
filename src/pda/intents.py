@@ -45,7 +45,7 @@ _KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("guardrails", ("guardrail", "rules", "rule check")),
     ("settings", ("settings", "my plan", "config")),
     ("stress", ("stress", "crash", "bear market", "worst case", "bad year")),
-    ("goal", ("goal", "155", "how long", "when will", "target value", "retire")),
+    ("goal", ("goal", "how long", "when will", "target value", "retire")),
     ("drift", ("drift", "underweight", "overweight", "allocation", "targets")),
     ("history", ("history", "transactions", "what did i buy", "activity")),
     ("portfolio", ("portfolio", "status", "how am i doing", "balance", "net worth", "value")),

@@ -13,7 +13,7 @@ def test_dashboard_renders_example_plan(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "DEFAULT_STRATEGY", tmp_path / "missing.yaml")
     at = AppTest.from_file("../dashboard/app.py", default_timeout=60).run()
     assert not at.exception, [e.value for e in at.exception]
-    assert "Core + stock slot" in at.title[0].value
+    assert "Core + satellites" in at.title[0].value
     labels = [m.label for m in at.metric]
     assert {"Value", "Goal progress", "Monthly", "Months to goal"} <= set(labels)
     assert at.dataframe, "plan table missing"

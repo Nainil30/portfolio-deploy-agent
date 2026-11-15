@@ -24,13 +24,13 @@ Use this to present the project **without running it**. The step-by-step build s
    - Two-tier language handling: a free regex/keyword parser first, then an optional OpenAI-compatible tool-calling agent (Groq/Gemini/Ollama).
    - Its system prompt is generated from the user's own plan.
    - Tools are read-only; the one write tool needs a human tap.
-5. **Result.** Setup in under five minutes, $0 to run, 121 offline tests with CI, Docker for a free VM. It started as my personal bot and I generalized it for anyone.
+5. **Result.** Setup in under five minutes, $0 to run, 121 offline tests with CI, Docker for a free VM. It started as my personal bot and I generalized it for anyone. My own plan still runs on it, but it lives in gitignored config: the public repo ships only made-up examples.
 
 ## 3. Walk through it without running it (5 slides or a screen share of the README)
 
 | Show | Say |
 |---|---|
-| README §2 payday message | "Each line has a reason. Here a guardrail moved $100 from QQQM to VOO because VOO must stay ≥ 3× QQQM, and the stock slot went to the stock furthest below target." |
+| README §2 payday message | "Each line has a reason. Here a guardrail moved $75 from QQQ to VTI because VTI must stay ≥ 3× QQQ, and the stock slot went to the stock furthest below target." |
 | The three-line minimal plan (README §5) | "That's all a beginner needs. Validation catches mistakes in plain English." |
 | The wizard transcript (README §5) | "A non-technical user answers six questions; €, a German ETF and a stock cap all work." |
 | The architecture diagram (README §9) | "Every interface goes through one service, so Telegram, the CLI and the AI can never disagree." |
@@ -72,7 +72,7 @@ In three places. The engine has no sell output. Guardrails clamp negatives. The 
 Every rule is optional config. There's an auto mode so a plan can be just targets, a wizard with presets, international tickers and currencies, and a `doctor` command that explains how to fix each setup problem.
 
 **What was the hardest bug?**
-Interactions between guardrails. A capped cushion lowered the floor and starved the gold buy, and rounding put VOO $2 under 3× QQQM. Invariant tests over several amounts caught both.
+Interactions between guardrails. A capped cushion lowered the floor and starved the gold buy, and rounding put the core fund $2 under its 3× rule. Invariant tests over several amounts caught both.
 
 **How would you scale it to a hosted multi-user product?**
 Per-user strategy and ledger rows, Postgres, Telegram webhooks behind FastAPI, a job queue for schedules, and encrypted storage. The engine doesn't change; it's pure.
@@ -81,7 +81,7 @@ Per-user strategy and ledger rows, Postgres, Telegram webhooks behind FastAPI, a
 A batched download, then a retry with the alternate symbol form. If there's still nothing, the position is valued at cost and flagged ⚠️, the buy is skipped with a note, and `pda doctor` names the ticker.
 
 **What would you add next?**
-Read-only brokerage sync, look-through exposure (NVDA inside VOO/QQQM/SMH), tax lots, and a provider evaluation harness.
+Read-only brokerage sync, look-through exposure (e.g. NVDA inside VTI/QQQ), tax lots, and a provider evaluation harness.
 
 ## 7. If you can run it (3-minute live demo)
 1. `pda demo`: the payday list, guardrails, goal, extra cash and stress test.

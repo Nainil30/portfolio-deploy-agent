@@ -8,7 +8,7 @@ Rules, in order:
   1. Never sell     – amounts are clamped at >= 0.
   2. Position caps  – no single stock above N% of the post-buy portfolio
                       (plus per-ticker caps, e.g. your employer's stock).
-  3. Core ratio     – e.g. VOO must stay >= 3x QQQM after the buy.
+  3. Core ratio     – e.g. VTI must stay >= 3x QQQ after the buy.
   4. Cushions       – no non-theme buy may exceed the cushion tickers.
 Any money a rule frees up goes to the overflow ticker.
 """
