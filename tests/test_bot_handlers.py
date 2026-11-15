@@ -112,14 +112,14 @@ def test_free_text_routes(bot, text, expect):
 
 def test_bought_command_and_undo(bot, service):
     upd, _ = make_update()
-    run(bot.cmd_bought(upd, ctx(["VHT", "250"])))
-    assert "VHT" in service.ledger.holdings()
+    run(bot.cmd_bought(upd, ctx(["XLV", "150"])))
+    assert "XLV" in service.ledger.holdings()
     run(bot.cmd_undo(upd, ctx()))
-    assert "VHT" not in service.ledger.holdings()
+    assert "XLV" not in service.ledger.holdings()
 
 
 def test_sold_requires_confirmation(bot, service):
-    c = ctx(["VOO", "1"])
+    c = ctx(["VTI", "1"])
     upd, _ = make_update()
     run(bot.cmd_sold(upd, c))
     assert "buy-only" in bot.sent[-1][0]
@@ -130,7 +130,7 @@ def test_sold_requires_confirmation(bot, service):
 
 
 def test_document_import(bot, service):
-    content = b"holdings:\n  - {ticker: VOO, shares: 2, avg_cost: 600}\n"
+    content = b"holdings:\n  - {ticker: VTI, shares: 2, avg_cost: 370}\n"
 
     class File:
         async def download_as_bytearray(self):
@@ -145,4 +145,4 @@ def test_document_import(bot, service):
     upd, _ = make_update(document=doc)
     run(bot.on_document(upd, ctx()))
     assert "Imported <b>1</b>" in bot.sent[-1][0]
-    assert set(service.ledger.holdings()) == {"VOO"}
+    assert set(service.ledger.holdings()) == {"VTI"}

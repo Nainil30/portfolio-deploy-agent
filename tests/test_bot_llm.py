@@ -47,18 +47,18 @@ def _call(name, args="{}"):
 
 
 def test_advisor_uses_tool_results(service):
-    llm = FakeLLM([_call("get_monthly_plan"), {"content": "Buy VOO $750 this month."}])
+    llm = FakeLLM([_call("get_monthly_plan"), {"content": "Buy VTI $625 this month."}])
     reply = asyncio.run(Advisor(llm, service).answer("what do I buy?"))
-    assert reply.text == "Buy VOO $750 this month."
-    assert llm.seen[-1]["role"] == "tool" and "VOO" in llm.seen[-1]["content"]
+    assert reply.text == "Buy VTI $625 this month."
+    assert llm.seen[-1]["role"] == "tool" and "VTI" in llm.seen[-1]["content"]
 
 
 def test_advisor_propose_buy_does_not_write(service):
-    before = service.ledger.holdings()["VOO"].shares
-    llm = FakeLLM([_call("propose_buy", '{"ticker": "voo", "dollars": 650}'), {"content": "Recorded once you confirm."}])
-    reply = asyncio.run(Advisor(llm, service).answer("I bought 650 of voo"))
-    assert reply.proposed_buys == [("VOO", 650.0, None)]
-    assert service.ledger.holdings()["VOO"].shares == before  # nothing written until the human confirms
+    before = service.ledger.holdings()["VTI"].shares
+    llm = FakeLLM([_call("propose_buy", '{"ticker": "vti", "dollars": 550}'), {"content": "Recorded once you confirm."}])
+    reply = asyncio.run(Advisor(llm, service).answer("I bought 550 of vti"))
+    assert reply.proposed_buys == [("VTI", 550.0, None)]
+    assert service.ledger.holdings()["VTI"].shares == before  # nothing written until the human confirms
 
 
 def test_llm_switches_model_when_provider_retired_it(monkeypatch):
@@ -88,6 +88,6 @@ def test_llm_switches_model_when_provider_retired_it(monkeypatch):
 
 
 def test_llm_markdown_becomes_telegram_html():
-    assert fmt.md_to_html("**VOO ≥ 3 × QQQM** & `pda plan` <x>") == (
-        "<b>VOO ≥ 3 × QQQM</b> &amp; <code>pda plan</code> &lt;x&gt;"
+    assert fmt.md_to_html("**VTI ≥ 3 × QQQ** & `pda plan` <x>") == (
+        "<b>VTI ≥ 3 × QQQ</b> &amp; <code>pda plan</code> &lt;x&gt;"
     )

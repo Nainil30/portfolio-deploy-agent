@@ -31,7 +31,7 @@ Ask = Callable[[str], str]
 PRESETS = {
     "three_fund": "Three-fund: VTI 60 / VXUS 30 / BND 10 (simplest)",
     "dividend_income": "Dividend income: SCHD, VIG, VYM + a few dividend stocks",
-    "core_plus_stock_slot": "Core + stock slot: S&P core, sector ETFs, gold, stocks, all guardrails",
+    "core_satellite": "Core + satellites: total-market core, ETFs, bonds, gold, a few stocks, all guardrails",
     "india_index": "India index (₹): Nifty 50, Next 50, Nasdaq 100, gold (NSE)",
 }
 

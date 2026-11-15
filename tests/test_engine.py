@@ -17,7 +17,7 @@ def amounts(plan):
 # ── monthly plan ────────────────────────────────────────────────────────
 def test_monthly_total_is_exact_and_buy_only(service):
     plan, _ = service.plan()
-    assert plan.total == 2000
+    assert plan.total == 1500
     assert all(ln.amount > 0 for ln in plan.lines)
 
 
@@ -27,30 +27,30 @@ def test_balanced_portfolio_gets_written_split(strategy, prices):
     holdings = [(t, total * s.pct / 100 / prices.prices[t], prices.prices[t]) for t, s in strategy.targets.items()]
     snap = snap_from(strategy, prices, holdings)
     a = amounts(monthly_plan(snap, strategy))
-    for t in ("VHT", "IAUM", "SMH", "QQQM", "SPMO"):
+    for t in ("XLV", "BND", "VXUS", "GLD", "QQQ"):
         assert a[t] == strategy.split[t]
-    # BRK.B sits exactly at its 7% cap, so only the headroom is bought; the rest goes to VOO.
+    # BRK.B sits exactly at its 6% cap, so only the headroom is bought; the rest goes to VTI.
     assert 0 < a["BRK.B"] < strategy.split["BRK.B"]
     slot = {t: v for t, v in a.items() if t in strategy.slot_candidates}
-    assert sum(slot.values()) == 400
+    assert sum(slot.values()) == 200
 
 
-def test_core_ratio_redirects_qqqm_to_voo(service):
+def test_core_ratio_redirects_qqq_to_vti(service):
     plan, snap = service.plan()
     a = amounts(plan)
-    assert "QQQM" not in a  # VOO is ~1.3x QQQM, so the whole $100 moves
-    assert a["VOO"] >= 750
+    assert "QQQ" not in a  # VTI is ~1.4x QQQ, so the whole $75 moves
+    assert a["VTI"] >= 625
     assert any(n.rule == "core_ratio" for n in plan.notes)
 
 
 def test_core_ratio_partial_when_close(strategy, prices):
-    # VOO slightly under 3x QQQM after the buy -> only part of QQQM's $100 moves.
-    voo, qqqm = prices.prices["VOO"], prices.prices["QQQM"]
-    snap = snap_from(strategy, prices, [("VOO", 30000 / voo, voo), ("QQQM", 10200 / qqqm, qqqm)])
+    # VTI slightly under 3x QQQ after the buy -> only part of QQQ's $75 moves.
+    vti, qqq = prices.prices["VTI"], prices.prices["QQQ"]
+    snap = snap_from(strategy, prices, [("VTI", 30000 / vti, vti), ("QQQ", 10150 / qqq, qqq)])
     a = amounts(monthly_plan(snap, strategy))
-    V, Q = 30000 + a.get("VOO", 0), 10200 + a.get("QQQM", 0)
+    V, Q = 30000 + a.get("VTI", 0), 10150 + a.get("QQQ", 0)
     assert V >= 3 * Q - 1
-    assert 0 < a.get("QQQM", 0) < 100
+    assert 0 < a.get("QQQ", 0) < 75
 
 
 def test_slot_goes_to_furthest_below_target(service):
@@ -58,18 +58,18 @@ def test_slot_goes_to_furthest_below_target(service):
     a = amounts(plan)
     cands = [snap.positions[t] for t in service.strategy.slot_candidates]
     best = max(cands, key=lambda p: p.gap_pct)
-    assert a.get(best.ticker, 0) >= 400
+    assert a.get(best.ticker, 0) >= 200
 
 
 def test_slot_skips_capped_stocks(service):
     plan, snap = service.plan()
     a = amounts(plan)
     assert snap.positions["NVDA"].actual_pct > 5
-    assert "NVDA" not in a and "GOOGL" not in a
+    assert "NVDA" not in a and "MSFT" not in a
 
 
 def test_no_stock_exceeds_cap_after_buys(service):
-    for amount in (2000, 6000, 20000):
+    for amount in (1500, 6000, 20000):
         plan, snap = service.plan(amount)
         post = snap.total_value + plan.total
         for ln in plan.lines:
@@ -78,23 +78,23 @@ def test_no_stock_exceeds_cap_after_buys(service):
                 assert snap.value_of(ln.ticker) + ln.amount <= cap / 100 * post + 1
 
 
-def test_dell_capped_at_three_percent(strategy, prices):
-    # DELL at ~2.4% with a 3% target: a big cash injection may top it up, never past 3%.
-    snap = snap_from(strategy, prices, [("VOO", 100, 680), ("DELL", 5, 335)])
+def test_per_ticker_cap_at_three_percent(strategy, prices):
+    # AAPL at ~2.3% with a 3% target and cap: a big cash injection may top it up, never past 3%.
+    snap = snap_from(strategy, prices, [("VTI", 100, 371), ("AAPL", 2.5, 356)])
     plan = extra_plan(snap, strategy, 2000)
     post = snap.total_value + 2000
-    assert snap.value_of("DELL") + amounts(plan).get("DELL", 0) <= 0.03 * post + 1
+    assert snap.value_of("AAPL") + amounts(plan).get("AAPL", 0) <= 0.03 * post + 1
 
 
 def test_scaled_plan(service):
     plan, _ = service.plan(3000)
     assert plan.total == 3000
-    assert amounts(plan)["VHT"] == 375  # 250 * 1.5
+    assert amounts(plan)["XLV"] == 300  # 150 * 2
 
 
-def test_dell_never_bought_when_over_cap(strategy, prices):
-    snap = snap_from(strategy, prices, [("VOO", 100, 680), ("DELL", 8.5, 335)])  # DELL ~4%
-    assert "DELL" not in amounts(extra_plan(snap, strategy, 2000))
+def test_capped_ticker_never_bought_when_over_cap(strategy, prices):
+    snap = snap_from(strategy, prices, [("VTI", 100, 371), ("AAPL", 4, 356)])  # AAPL ~3.7%
+    assert "AAPL" not in amounts(extra_plan(snap, strategy, 2000))
 
 
 def test_cushions_remain_biggest_non_ai_buys(service):
@@ -109,17 +109,17 @@ def test_cushions_remain_biggest_non_ai_buys(service):
 
 
 def test_missing_price_candidate_is_skipped(strategy, prices):
-    prices.prices.pop("SPCX")
-    snap = snap_from(strategy, prices, [("VOO", 10, 600)])
+    prices.prices.pop("COST")
+    snap = snap_from(strategy, prices, [("VTI", 10, 371)])
     plan = monthly_plan(snap, strategy)
-    assert "SPCX" not in amounts(plan)
-    assert any("SPCX skipped" in n.message for n in plan.notes)
-    assert plan.total == 2000
+    assert "COST" not in amounts(plan)
+    assert any("COST skipped" in n.message for n in plan.notes)
+    assert plan.total == 1500
 
 
 def test_empty_portfolio_still_plans(empty_service):
     plan, _ = empty_service.plan()
-    assert plan.total == 2000
+    assert plan.total == 1500
 
 
 def test_zero_amount_rejected(service):
@@ -134,8 +134,8 @@ def test_extra_fills_biggest_gaps(service):
     plan, snap = service.extra(5000)
     a = amounts(plan)
     assert plan.total == 5000
-    assert a["VHT"] > 0 and a["BRK.B"] > 0  # both at 0% vs 8% / 7%
-    for t in ("QQQM", "SCHD", "NVDA", "PLTR"):  # overweight -> nothing
+    assert a["XLV"] > 0 and a["BRK.B"] > 0  # both at 0% vs 6% / 6%
+    for t in ("QQQ", "NVDA", "MSFT", "AAPL"):  # overweight -> nothing
         assert t not in a
 
 

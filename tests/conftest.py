@@ -5,12 +5,10 @@ from pda.ledger import Ledger
 from pda.prices import StaticPrices
 from pda.service import Service
 
-HOLDINGS = [  # roughly the real starting portfolio: QQQM-heavy, NVDA over cap
-    ("VOO", 18.0, 560.0), ("QQQM", 34.0, 225.0), ("SCHD", 120.0, 27.0), ("SMH", 2.3, 340.0),
-    ("VXUS", 13.0, 77.0), ("IAUM", 46.0, 42.0), ("NVDA", 19.0, 134.0), ("GOOGL", 8.0, 316.0),
-    ("DELL", 6.4, 264.0), ("PLTR", 8.9, 125.0), ("AMZN", 3.7, 212.0), ("MSFT", 1.5, 401.0),
-    ("TSLA", 1.2, 393.0), ("AMD", 0.6, 313.0), ("LLY", 0.5, 822.0), ("INTC", 2.8, 71.0),
-    ("ORCL", 0.43, 234.0),
+HOLDINGS = [  # same made-up portfolio as examples/holdings.example.yaml: QQQ-heavy, NVDA over cap
+    ("VTI", 40.0, 300.0), ("QQQ", 16.0, 520.0), ("VXUS", 60.0, 70.0), ("BND", 40.0, 72.0),
+    ("GLD", 6.0, 250.0), ("NVDA", 25.0, 120.0), ("MSFT", 5.0, 410.0), ("AAPL", 6.0, 220.0),
+    ("AMZN", 4.0, 190.0), ("COST", 1.0, 900.0), ("TSLA", 2.0, 250.0),
 ]
 
 

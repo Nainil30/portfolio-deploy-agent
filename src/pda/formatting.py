@@ -231,7 +231,7 @@ HELP = """🤖 <b>Portfolio Deploy Agent</b>
 /guardrails: rule status
 /goal: when you hit your money goal
 /stress: bad-year scenarios
-/bought VOO 650 [@ 612.40]: record a buy (amount). Add "sh" for shares: /bought NVDA 2 sh
+/bought VTI 500 [@ 612.40]: record a buy (amount). Add "sh" for shares: /bought NVDA 2 sh
 /history · /undo
 /settings: your plan · /set monthly 3000 · /set goal 250k
 /import: send a positions CSV or holdings.yaml

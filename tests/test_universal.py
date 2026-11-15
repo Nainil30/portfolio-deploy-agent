@@ -102,7 +102,7 @@ def test_set_monthly_scales_fixed_split(service):
     service.set_setting("monthly", "3000")
     plan, _ = service.plan()
     assert plan.total == 3000
-    assert {ln.ticker: ln.amount for ln in plan.lines}["VHT"] == 375
+    assert {ln.ticker: ln.amount for ln in plan.lines}["XLV"] == 300
 
 
 def test_settings_persist_and_reset(service, strategy, prices):
@@ -154,12 +154,12 @@ def test_wizard_scales_targets_to_100(tmp_path):
 
 def test_wizard_preset_rescales_fixed_split(tmp_path):
     path = tmp_path / "s.yaml"
-    run_wizard(path=path, preset="core_plus_stock_slot", force=True, out=lambda *_: None,
+    run_wizard(path=path, preset="core_satellite", force=True, out=lambda *_: None,
                defaults={"name": None, "currency": None, "monthly": 3000, "goal": None,
                          "return": None, "day": None, "timezone": None})
     s = load_strategy(path)
     assert s.monthly_amount == 3000 and s.split_base == 3000
-    assert s.split["VOO"] == 975 and s.slot_amount == 600
+    assert s.split["VTI"] == 1100 and s.slot_amount == 400
 
 
 def test_wizard_keeps_existing_file(tmp_path):
@@ -170,7 +170,7 @@ def test_wizard_keeps_existing_file(tmp_path):
 
 
 def test_scale_split_exact_total():
-    m = {"split": {"A": 650, "B": 250, "C": 100}, "stock_slot": {"amount": 400}}
+    m = {"split": {"A": 550, "B": 150, "C": 100}, "stock_slot": {"amount": 200}}
     scale_split(m, 1234)
     assert sum(m["split"].values()) + m["stock_slot"]["amount"] == 1234
 

@@ -31,7 +31,7 @@ EXAMPLES_DIR = PROJECT_ROOT / "examples"
 DEFAULT_STRATEGY = Path(os.getenv("PDA_STRATEGY", CONFIG_DIR / "strategy.yaml"))
 DEFAULT_DB = Path(os.getenv("PDA_DB", PROJECT_ROOT / "data" / "pda.db"))
 DEMO_PRICES = CONFIG_DIR / "demo_prices.yaml"
-DEMO_STRATEGY = EXAMPLES_DIR / "core_plus_stock_slot.yaml"
+DEMO_STRATEGY = EXAMPLES_DIR / "core_satellite.yaml"
 DEMO_HOLDINGS = EXAMPLES_DIR / "holdings.example.yaml"
 
 VALID_BUCKETS = {"core_etf", "etf", "stock", "bond", "gold", "reit", "crypto", "cash"}
@@ -47,8 +47,8 @@ class Guardrails:
     never_sell: bool = True
     max_single_stock_pct: float | None = None
     per_ticker_caps: dict[str, float] = field(default_factory=dict)
-    core_ticker: str | None = None      # e.g. VOO must stay >= min_multiple x ...
-    core_versus: str | None = None      # ... QQQM
+    core_ticker: str | None = None      # e.g. VTI must stay >= min_multiple x ...
+    core_versus: str | None = None      # ... QQQ
     core_min_multiple: float = 3.0
     cushions: tuple[str, ...] = ()      # must be the biggest non-theme buys
     overflow_ticker: str = ""

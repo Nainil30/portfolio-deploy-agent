@@ -8,7 +8,7 @@
     pda extra 5000              deploy one-off cash
     pda portfolio | drift | guardrails | goal | stress | history | undo
     pda import FILE             Fidelity CSV or holdings.yaml
-    pda bought VOO 650 [--price 612.4] [--shares]
+    pda bought VTI 500 [--price 612.4] [--shares]
     pda set monthly 3000        change monthly amount / goal / day / return
     pda send-plan               push the plan to Telegram once (for cron)
     pda ask "how far am I from the goal?"   (needs an LLM key)
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="pda", description="Buy-only portfolio co-pilot")
     p.add_argument("--offline", action="store_true", help="use demo prices (no network)")
     p.add_argument("--db", default=os.getenv("PDA_DB", str(DEFAULT_DB)))
-    p.add_argument("--strategy", default=str(DEFAULT_STRATEGY))
+    p.add_argument("--strategy", default=os.getenv("PDA_STRATEGY", str(DEFAULT_STRATEGY)))
     p.add_argument("-v", "--verbose", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     sd = sub.add_parser("demo", help="see it work with an example plan (no setup)")
     sd.add_argument("--extra", type=float, default=5000, help="also show an extra-cash plan")
     sn = sub.add_parser("init", help="create your plan (setup wizard)")
-    sn.add_argument("--preset", choices=["three_fund", "dividend_income", "core_plus_stock_slot", "india_index", "custom"])
+    sn.add_argument("--preset", choices=["three_fund", "dividend_income", "core_satellite", "india_index", "custom"])
     sn.add_argument("--monthly", help="e.g. 1500 or 1.5k")
     sn.add_argument("--goal", help="e.g. 400000 or 400k")
     sn.add_argument("--currency")

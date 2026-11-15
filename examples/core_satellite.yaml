@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  PRESET: "Core + satellites" (fixed mode, every guardrail switched on)
+#
+#  A made-up example plan, not anyone's real portfolio: $1,500/month toward
+#  $300k. A total-market core, international + healthcare ETFs, bonds, gold,
+#  and a small basket of individual stocks with a tech tilt.
+#  It shows off every feature: a written split, a monthly "stock slot",
+#  position caps, a core ratio and defensive cushions.
+#
+#  Use it:   pda init --preset core_satellite     (or copy to config/strategy.yaml)
+#  Then replace the tickers, percentages and amounts with your own.
+#  Reference for every field: docs/CONFIGURATION.md
+#
+#  Rules of the plan:
+#    • Buy-only. The bot never recommends selling.
+#    • Rebalance only with new money: drift is closed by steering the monthly
+#      buys and the stock slot, never by trimming winners.
+# ─────────────────────────────────────────────────────────────────────────────
+
+profile:
+  name: "Core + satellites"
+  currency: "$"
+
+goal:
+  target_value: 300000          # long-term portfolio target ($)
+  expected_annual_return: 0.07  # used ONLY for projections, never for decisions
+
+monthly:
+  mode: fixed                   # fixed = written split below; auto = fill biggest gaps
+  amount: 1500                  # what you invest each month
+  reminder_day: 1               # day of month the bot sends your buy list
+  reminder_time: "09:30"
+  timezone: "America/New_York"
+  min_buy: 25                   # buys smaller than this are folded into the overflow ticker
+
+  # The fixed part of the monthly buy ($). Scaled proportionally if you
+  # invest a different amount (e.g. "/plan 3000").
+  split:
+    VTI: 550
+    XLV: 150
+    BND: 150
+    VXUS: 150
+    BRK.B: 150
+    GLD: 75
+    QQQ: 75
+
+  # The flexible part: goes to whichever candidate is furthest below its
+  # target that month (after guardrails).
+  stock_slot:
+    amount: 200
+    candidates: [NVDA, MSFT, AAPL, AMZN, COST]
+
+# Target weights (% of the whole portfolio). Must total 100.
+#   bucket: core_etf | etf | bond | gold | reit | crypto | cash | stock
+#           (the single-stock cap applies to "stock")
+#   ai:     true if the position is mostly a bet on one theme (here: big tech / AI)
+targets:
+  # Core ETFs: 45%
+  VTI:   { pct: 35.0, bucket: core_etf, ai: false }
+  QQQ:   { pct: 10.0, bucket: core_etf, ai: true }
+  # Other ETFs: 18%
+  VXUS:  { pct: 12.0, bucket: etf, ai: false }
+  XLV:   { pct: 6.0,  bucket: etf, ai: false }
+  # Bonds and gold: 15%
+  BND:   { pct: 10.0, bucket: bond, ai: false }
+  GLD:   { pct: 5.0,  bucket: gold, ai: false }
+  # Stocks: 22%
+  BRK.B: { pct: 6.0,  bucket: stock, ai: false }
+  NVDA:  { pct: 4.0,  bucket: stock, ai: true }
+  MSFT:  { pct: 4.0,  bucket: stock, ai: true }
+  AAPL:  { pct: 3.0,  bucket: stock, ai: true }
+  AMZN:  { pct: 3.0,  bucket: stock, ai: true }
+  COST:  { pct: 2.0,  bucket: stock, ai: false }
+
+guardrails:
+  never_sell: true
+  # VTI must stay at least 3x QQQ: QQQ's top holdings are already inside VTI,
+  # so letting QQQ catch up just doubles up on the same mega-cap names.
+  core_ratio: { ticker: VTI, versus: QQQ, min_multiple: 3.0 }
+  # No single stock above 5% of the portfolio.
+  max_single_stock_pct: 5.0
+  # Per-ticker overrides of the single-stock cap.
+  #   AAPL 3%: example of "I already get this stock through my employer".
+  #   BRK.B 6%: a diversified holding company, so it may go above the 5% cap.
+  per_ticker_caps:
+    AAPL: 3.0
+    BRK.B: 6.0
+  # BND and XLV must be the biggest non-theme buys; they cushion a tech drawdown.
+  cushions: [BND, XLV]
+  # Where money goes when a guardrail blocks a buy.
+  overflow_ticker: VTI
+
+alerts:
+  daily_check_time: "16:30"     # after US market close, Mon–Fri
+  drawdown_levels_pct: [10, 20, 30]
+  weekly_digest: true           # Sunday summary
+
+# Optional: map a ticker to a different Yahoo Finance symbol. Class shares
+# (BRK.B -> BRK-B) and exchange suffixes (.NS, .L, .TO) are handled for you.
+yahoo_aliases: {}

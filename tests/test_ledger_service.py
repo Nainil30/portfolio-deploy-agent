@@ -6,16 +6,16 @@ from pda.service import ServiceError
 
 def test_import_then_holdings(service):
     h = service.ledger.holdings()
-    assert h["VOO"].shares == 18.0
-    assert h["VOO"].cost == pytest.approx(18 * 560)
+    assert h["VTI"].shares == 40.0
+    assert h["VTI"].cost == pytest.approx(40 * 300)
 
 
 def test_execute_plan_updates_holdings_and_blocks_double_record(service):
     plan, _ = service.plan()
-    before = service.ledger.holdings()["VOO"].shares
+    before = service.ledger.holdings()["VTI"].shares
     rec = service.execute_plan(plan.id)
     assert rec.rows
-    assert service.ledger.holdings()["VOO"].shares > before
+    assert service.ledger.holdings()["VTI"].shares > before
     assert service.month_done()
     with pytest.raises(ServiceError, match="Already recorded"):
         service.execute_plan(plan.id)
@@ -26,7 +26,7 @@ def test_undo_reverts_plan_execution(service):
     service.execute_plan(plan.id)
     service.undo()
     assert not service.month_done()
-    assert service.ledger.holdings()["VOO"].shares == 18.0
+    assert service.ledger.holdings()["VTI"].shares == 40.0
 
 
 def test_undo_import_restores_previous_holdings(service):
@@ -39,30 +39,30 @@ def test_undo_import_restores_previous_holdings(service):
 def test_record_buy_dollars_and_shares(service):
     service.record_buys([("brk-b", 571, None)])
     assert service.ledger.holdings()["BRK.B"].shares == pytest.approx(1.0)
-    service.record_buys([("VHT", 2, 300.0)], shares_mode=True)
-    assert service.ledger.holdings()["VHT"].cost == pytest.approx(600)
+    service.record_buys([("XLV", 2, 190.0)], shares_mode=True)
+    assert service.ledger.holdings()["XLV"].cost == pytest.approx(380)
 
 
 def test_sell_reduces_at_average_cost(service):
-    service.record_sell("VOO", 9, 700)
-    h = service.ledger.holdings()["VOO"]
-    assert h.shares == 9
-    assert h.cost == pytest.approx(9 * 560)
+    service.record_sell("VTI", 20, 400)
+    h = service.ledger.holdings()["VTI"]
+    assert h.shares == 20
+    assert h.cost == pytest.approx(20 * 300)
     assert service.ledger.sell_count() == 1
 
 
 def test_cannot_oversell(service):
     with pytest.raises(ServiceError, match="Cannot sell"):
-        service.record_sell("VOO", 100, 700)
+        service.record_sell("VTI", 100, 400)
 
 
 def test_ledger_rejects_nonpositive(ledger):
     with pytest.raises(LedgerError):
-        ledger.record([("VOO", "buy", 0, 500)])
+        ledger.record([("VTI", "buy", 0, 500)])
 
 
 def test_unknown_ticker_warns(service):
-    rec = service.record_buys([("COST", 100, 900.0)])
+    rec = service.record_buys([("KO", 100, 70.0)])
     assert rec.warnings
 
 
