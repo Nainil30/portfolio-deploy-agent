@@ -21,6 +21,16 @@ def test_execute_plan_updates_holdings_and_blocks_double_record(service):
         service.execute_plan(plan.id)
 
 
+def test_weekly_tranches_add_up_to_the_month(service):
+    quarter = service.strategy.monthly_amount / 4
+    for week in range(4):
+        assert not service.month_done()
+        plan, _ = service.plan(quarter)
+        service.execute_plan(plan.id)
+        assert service.month_deployed() == pytest.approx(quarter * (week + 1))
+    assert service.month_done()
+
+
 def test_undo_reverts_plan_execution(service):
     plan, _ = service.plan()
     service.execute_plan(plan.id)
@@ -82,3 +92,28 @@ def test_guardrail_report_flags_real_issues(service):
     assert checks["Core ratio"].status == "warn"
     assert checks["Position caps"].status == "warn" and "NVDA" in checks["Position caps"].detail
     assert checks["Never sell"].status == "ok"
+
+
+def test_deployed_counts_plans_and_manual_buys(service):
+    target = service.strategy.monthly_amount
+    plan, _ = service.plan(1000)
+    service.execute_plan(plan.id)
+    service.record_buys([("VTI", 200, 371.0)], "manual")
+    m = service.month_summary()
+    assert m.total == pytest.approx(1200, abs=1)
+    assert [e.source for e in m.entries] == ["plan", "manual"]
+    assert m.remaining == pytest.approx(target - 1200, abs=1)
+    assert not service.month_done()
+    plan, _ = service.plan(m.remaining)
+    service.execute_plan(plan.id)
+    assert service.month_done()
+    service.undo()
+    assert service.month_summary().total == pytest.approx(1200, abs=1)
+
+
+def test_fmt_deployed_shows_progress(service):
+    from pda.formatting import fmt_deployed
+    plan, _ = service.plan(500)
+    service.execute_plan(plan.id)
+    html = fmt_deployed(service.month_summary())
+    assert "of $1,500" in html and "to go" in html and "plan" in html

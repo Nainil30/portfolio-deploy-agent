@@ -238,7 +238,8 @@ So you can fork the repo, run your real portfolio on it, and push code changes w
 
 | In Telegram | What happens |
 |---|---|
-| 📋 **Plan** / `/plan` / `/plan 3000` | This month's buy list (scaled if you invest a different amount) |
+| 📋 **Plan** / `/plan` / `/plan 500` | This month's buy list, scaled to any amount. Invest weekly (`/plan 500` four times) or in uneven slices (`/plan 1500`, then `/plan 500`) |
+| 📆 **Deployed** / `/deployed` | This month so far: deployed vs your monthly amount, what's left, every buy (plan, extra, manual) and totals per ticker |
 | ✅ **I bought these** | Records every line at the current price. It can't be recorded twice |
 | `/extra 5000` or "got a 5k bonus" | One-off cash → biggest gaps first |
 | 💼 **Portfolio** · 🎯 **Drift** | Value, gain, buckets vs target · every ticker vs target |

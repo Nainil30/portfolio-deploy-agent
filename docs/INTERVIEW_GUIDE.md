@@ -1,6 +1,6 @@
 # Interview Guide: presenting Portfolio Deploy Agent
 
-Use this to present the project **without running it**. The step-by-step build story is in [HOW_IT_WORKS.md](HOW_IT_WORKS.md); this page gives you the talk track.
+Use this to present the project **without running it**. The step-by-step build story is in [HOW_IT_WORKS.md](HOW_IT_WORKS.md); this page gives you the talk track. Interviewing for a data engineering role? Section 8 reframes the project in data engineering terms.
 
 ---
 
@@ -88,3 +88,92 @@ Read-only brokerage sync, look-through exposure (e.g. NVDA inside VTI/QQQ), tax 
 2. `pda --offline --strategy examples/three_fund.yaml plan`: the simplest auto plan.
 3. In Telegram: 📋 Plan → ✅ → `/history` → `/undo` → `/set monthly 3000` → "should I sell?"
 4. `pytest -q`: 121 green.
+
+---
+
+## 8. The data engineering angle
+
+For a data engineering panel, present the project as **a small, complete data system**: it ingests messy sources, keeps one reliable record of truth, derives everything else from that record, checks data quality, runs on a schedule, and adds an AI layer that can't corrupt the data. Lead with the data model and correctness, then introduce the AI layer as the safe use of that data.
+
+### 30-second pitch (data engineering version)
+
+> "I built an open-source portfolio system that ingests broker exports and market prices from Yahoo. It stores every transaction in an append-only ledger and derives holdings from it, so I get an audit trail, undo and reproducible results. A deterministic rules engine turns that data into a monthly plan, and a scheduler sends it on Telegram. On top of that there's an LLM layer that answers plain-English questions using tools over the tested data. It can only propose a change, and a person has to confirm it. About 3,200 lines of Python, 121 offline tests, CI and Docker, and it costs $0 to run."
+
+### What you built, in data engineering terms
+
+| What's in the code | Data engineering term | What to say |
+|---|---|---|
+| `ledger.py`: transactions with `voided_by` and `batch`; holdings computed from them | **Event sourcing / append-only log**, soft deletes | "I never update rows in place. State is replayed from events, like a CDC log or a Delta table's history. An import voids old rows instead of deleting them, so even a bad import can be undone." |
+| A `batch` id on every write; plan status only moves proposed → executed | **Idempotency keys** | "Tapping ✅ twice can't record a purchase twice. Undo reverses a whole batch atomically." |
+| SQL `CHECK` constraints (`shares > 0`, `kind IN (...)`) | **Schema enforcement at the storage layer** | "Bad data is rejected at write time, not discovered later in a report." |
+| Strategy validation plus `pda doctor` | **Data contracts / data quality checks** | "Config is validated against a schema and errors come back in plain English. Doctor works like a pre-flight data quality check." |
+| `prices.py`: one batched download, retry with an alternate symbol, fall back to cost and flag ⚠️ | **Resilient ingestion, graceful degradation** | "A missing upstream price never crashes the pipeline. The row is flagged and the problem is visible to the user." |
+| The `snapshots` table (one row per day: value, cost) | **Daily fact table / time series** | "Daily snapshots give me drawdown detection and history without recomputing it." |
+| `importers.py`: broker CSV import; combining a month-end statement with later trade confirmations | **Ingesting from multiple sources and reconciling them** | "A statement gives a full snapshot as of one date, and trade confirmations add the changes since then. It's the same pattern as full load plus incremental load." |
+| `service.py`, the one layer behind the bot, CLI, dashboard and AI tools | **Single source of truth / semantic layer** | "Four interfaces, one set of logic, so the numbers can never disagree between them." |
+| JobQueue for monthly reminders and drawdown alerts | **Orchestration / scheduling** | "In-process scheduling is enough for one user. At scale it moves to Airflow or Dagster." |
+| Offline tests with fixture prices; CI with ruff and pytest | **Deterministic pipeline testing** | "Tests never hit the network, so CI is fast and never flaky. I check invariants across many amounts, not just single examples." |
+| Real plan, holdings, ledger and `.env` are gitignored; only examples ship | **Data privacy / secrets management** | "Personal data and keys never reach the repo. Configuration is separate from code." |
+
+### Data engineering questions, with short answers
+
+**Why append-only instead of updating holdings?**
+Auditability, undo and reproducibility: current state is a function of the events. The cost is replaying on read, which is trivial at this size. At scale I'd keep materialized snapshots and refresh them incrementally.
+
+**How would you scale this to 100k users?**
+- **Storage:** Postgres with tables keyed by user, partitioned by user or date.
+- **Bot traffic:** Telegram webhooks behind FastAPI instead of long polling.
+- **Async work:** a queue (SQS or Kafka) for price updates and notifications.
+- **Scheduled jobs:** Airflow or Dagster for the daily price load and snapshots.
+- **Prices:** fetched once per ticker and shared across all users, not fetched per user.
+- **Analytics:** a warehouse modeled with dbt in bronze/silver/gold layers: raw transactions, then cleaned positions, then portfolio metrics.
+- **The engine doesn't change,** because it's a pure function.
+
+**How do you handle late or incorrect data, like a broker correction?**
+Void the affected batch and re-import. Because rows are voided rather than deleted, the history shows what changed. In a warehouse that becomes a MERGE/upsert, with the history kept as a slowly changing dimension.
+
+**How do you guarantee idempotency?**
+Every write carries a batch id, a plan's status only moves forward, and confirming twice is a no-op.
+
+**How do you monitor data quality?**
+Schema validation on config, `CHECK` constraints in the database, and missing prices flagged instead of hidden. At scale I'd add freshness checks, row-count checks and null checks with dbt tests or Great Expectations.
+
+**Batch or streaming?**
+Batch: monthly plans and daily snapshots don't need real-time data. Streaming only pays off for intraday alerts, and even then a micro-batch every few minutes is usually enough. Choose based on the latency the business actually needs.
+
+**Why SQLite?**
+One user, no server, a single file, and full SQL with transactions. I'd move to Postgres for concurrent users; the schema carries over almost unchanged.
+
+### General AI questions a data engineer may get
+
+**RAG or fine-tuning?**
+RAG or tools when the facts change or must be traceable to a source. Fine-tuning for style, format or a narrow task. Most business cases need retrieval, not fine-tuning.
+
+**How do you reduce hallucinations?**
+Base answers on retrieved data, use tools for any number, ask for structured output validated against a schema, keep temperature low, have a person approve actions, and run evals on a golden set.
+
+**What does a data engineer do on an AI project?**
+- Provide clean, fresh, documented source data.
+- Build chunking and embedding pipelines for RAG, and keep the vector index in sync with the source systems.
+- Track lineage and control access to personal data.
+- Log prompts, responses and cost so the feature can be monitored.
+
+Model quality is limited by data quality.
+
+**How do you evaluate an LLM feature?**
+Keep a labelled set of real questions. Measure tool and answer accuracy, latency, cost per request and the refusal rate. Rerun it on every prompt or model change, like regression tests.
+
+**Prompt injection?**
+Treat model output as untrusted. Give tools least privilege, never let the model execute a write directly, and keep system instructions separate from user content. Here the LLM can only propose, and a person confirms.
+
+**Why no vector database?**
+The data is structured, so typed tools are the better fit. For unstructured text such as PDF statements or news, I'd add embeddings in pgvector, which keeps everything in Postgres.
+
+### Gaps to admit up front (it builds credibility)
+- No Spark or Airflow, because one user's data doesn't need them. The pieces map onto them, though: the engine is pure, the ledger is an event log, and the jobs are separate.
+- No RAG or vector store, because the data is structured. I'd add them for parsing PDF statements.
+- Next, I'd add read-only brokerage sync, look-through exposure, tax lots and a provider evaluation harness.
+
+### Things to have ready
+- The README architecture diagram and the `transactions` schema in `ledger.py`. A schema discussion is a natural way into the data engineering conversation.
+- The example plan from the repo, not your real holdings or dollar amounts.

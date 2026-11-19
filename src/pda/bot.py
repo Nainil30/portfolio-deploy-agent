@@ -38,7 +38,7 @@ from pda.service import Service, ServiceError
 log = logging.getLogger(__name__)
 
 KEYBOARD = ReplyKeyboardMarkup(
-    [["📋 Plan", "💼 Portfolio", "🎯 Drift"], ["🛡 Guardrails", "🏁 Goal", "⚙️ Settings"]],
+    [["📋 Plan", "📆 Deployed", "💼 Portfolio"], ["🎯 Drift", "🛡 Guardrails", "🏁 Goal", "⚙️ Settings"]],
     resize_keyboard=True,
     is_persistent=True,
 )
@@ -52,6 +52,7 @@ COMMANDS = [
     ("goal", "Projection to your target"),
     ("stress", "Bad-year scenarios"),
     ("bought", "Record a buy: /bought VTI 500"),
+    ("deployed", "How much you've put in this month"),
     ("history", "Recent activity"),
     ("undo", "Undo the last record/import"),
     ("import", "How to import holdings"),
@@ -127,7 +128,9 @@ class Bot:
                                           "k" if context.args[0].lower().endswith("k") else None)
         plan, snap = await self.run(self.service.plan, amount)
         done = await self.run(self.service.month_done)
-        await self.send(update, fmt.fmt_plan(plan, snap, done), self._plan_buttons(plan.id))
+        deployed = await self.run(self.service.month_deployed)
+        html = fmt.fmt_plan(plan, snap, done, deployed, self.service.strategy.monthly_amount)
+        await self.send(update, html, self._plan_buttons(plan.id))
 
     @guarded
     async def cmd_extra(self, update, context, amount: float | None = None):
@@ -236,6 +239,10 @@ class Bot:
         await self.send(update, "✅ Saved.\n\n" + fmt.fmt_settings(self.service.strategy, overrides))
 
     @guarded
+    async def cmd_deployed(self, update, context):
+        await self.send(update, fmt.fmt_deployed(await self.run(self.service.month_summary)))
+
+    @guarded
     async def cmd_history(self, update, context):
         txs = await self.run(self.service.history, 15)
         await self.send(update, fmt.fmt_history(txs))
@@ -325,6 +332,7 @@ class Bot:
             handler = {
                 "portfolio": self.cmd_portfolio, "drift": self.cmd_drift, "guardrails": self.cmd_guardrails,
                 "goal": self.cmd_goal, "stress": self.cmd_stress, "history": self.cmd_history,
+                "deployed": self.cmd_deployed,
                 "undo": self.cmd_undo, "help": self.cmd_help, "settings": self.cmd_settings,
             }[name]
             await handler.__wrapped__(self, update, context)
@@ -341,7 +349,11 @@ class Bot:
             if action == "exec":
                 rec = await self.run(self.service.execute_plan, int(arg))
                 await q.edit_message_reply_markup(None)
-                await self.send(update, fmt.fmt_recorded(rec, "Bought, ledger updated") + "\n\nNice. See you next month 👋")
+                deployed = await self.run(self.service.month_deployed)
+                monthly = self.service.strategy.monthly_amount
+                tail = ("Nice. That's this month done. See you next month 👋" if deployed >= monthly - 0.5
+                        else f"Nice. {fmt.money(deployed)} of {fmt.money(monthly)} deployed this month.")
+                await self.send(update, fmt.fmt_recorded(rec, "Bought, ledger updated") + "\n\n" + tail)
             elif action == "skip":
                 await self.run(self.service.skip_plan, int(arg))
                 await q.edit_message_reply_markup(None)
@@ -406,7 +418,7 @@ class Bot:
             ("help", self.cmd_help), ("plan", self.cmd_plan), ("extra", self.cmd_extra),
             ("portfolio", self.cmd_portfolio), ("drift", self.cmd_drift), ("guardrails", self.cmd_guardrails),
             ("goal", self.cmd_goal), ("stress", self.cmd_stress), ("bought", self.cmd_bought),
-            ("sold", self.cmd_sold), ("history", self.cmd_history), ("undo", self.cmd_undo),
+            ("sold", self.cmd_sold), ("deployed", self.cmd_deployed), ("history", self.cmd_history), ("undo", self.cmd_undo),
             ("import", self.cmd_import), ("settings", self.cmd_settings), ("set", self.cmd_set),
         ]
         app.add_handler(CommandHandler("start", self.cmd_start))
