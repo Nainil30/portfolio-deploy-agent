@@ -228,6 +228,15 @@ class Ledger:
         ).fetchone()
         return row is not None
 
+    def buys_in_month(self, month: str) -> list[Tx]:
+        """Active buys recorded in a month ("2026-11"): plan taps, /extra and manual /bought."""
+        return self._txs("WHERE kind = 'buy' AND voided_by IS NULL AND substr(ts, 1, 7) = ? ORDER BY id", (month,))
+
+    def plan_kinds_by_batch(self) -> dict[str, str]:
+        """batch id -> plan kind ('monthly' | 'extra') for executed plans."""
+        cur = self._conn.execute("SELECT batch, kind FROM plans WHERE status = 'executed' AND batch IS NOT NULL")
+        return {r[0]: r[1] for r in cur.fetchall()}
+
     # ── snapshots & alerts ──────────────────────────────────────────────
     def save_snapshot(self, day: date, value: float, cost: float) -> None:
         with self._tx() as c:

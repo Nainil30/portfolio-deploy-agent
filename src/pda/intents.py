@@ -47,6 +47,8 @@ _KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
     ("stress", ("stress", "crash", "bear market", "worst case", "bad year")),
     ("goal", ("goal", "how long", "when will", "target value", "retire")),
     ("drift", ("drift", "underweight", "overweight", "allocation", "targets")),
+    ("deployed", ("deployed", "deploy so far", "invested this month", "put in this month",
+                  "how much have i invested", "how much did i invest", "how much have i put")),
     ("history", ("history", "transactions", "what did i buy", "activity")),
     ("portfolio", ("portfolio", "status", "how am i doing", "balance", "net worth", "value")),
     ("plan", ("plan", "what should i buy", "what to buy", "buy list", "this month")),
@@ -61,6 +63,7 @@ BUTTONS = {
     "🛡 Guardrails": "guardrails",
     "🏁 Goal": "goal",
     "🧾 History": "history",
+    "📆 Deployed": "deployed",
     "⚙️ Settings": "settings",
 }
 

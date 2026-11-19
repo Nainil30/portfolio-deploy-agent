@@ -32,6 +32,27 @@ class Recorded:
     warnings: list[str]
 
 
+@dataclass
+class DeployEntry:
+    day: str          # YYYY-MM-DD
+    source: str       # plan | extra | manual
+    amount: float
+    tickers: list[str]
+
+
+@dataclass
+class MonthSummary:
+    month: str        # YYYY-MM
+    target: float     # the monthly amount
+    total: float      # everything bought this month
+    entries: list[DeployEntry]
+    by_ticker: dict[str, float]
+
+    @property
+    def remaining(self) -> float:
+        return max(self.target - self.total, 0.0)
+
+
 class Service:
     def __init__(self, strategy: Strategy, ledger: Ledger, prices: PriceProvider):
         self.base_strategy = strategy
@@ -116,8 +137,27 @@ class Service:
         self.ledger.mark_alert(key)
         return level, dd
 
+    def month_summary(self, month: str | None = None) -> MonthSummary:
+        """Every buy recorded this month (plan taps, /extra, manual /bought), grouped by batch."""
+        month = month or datetime.now().strftime("%Y-%m")
+        kinds = self.ledger.plan_kinds_by_batch()
+        entries: dict[str, DeployEntry] = {}
+        by_ticker: dict[str, float] = {}
+        for tx in self.ledger.buys_in_month(month):
+            source = {"monthly": "plan", "extra": "extra"}.get(kinds.get(tx.batch, ""), "manual")
+            e = entries.setdefault(tx.batch, DeployEntry(tx.ts[:10], source, 0.0, []))
+            e.amount += tx.amount
+            e.tickers.append(tx.ticker)
+            by_ticker[tx.ticker] = by_ticker.get(tx.ticker, 0.0) + tx.amount
+        total = sum(e.amount for e in entries.values())
+        return MonthSummary(month, self.strategy.monthly_amount, total, list(entries.values()), by_ticker)
+
+    def month_deployed(self) -> float:
+        """Dollars put in this month so far (e.g. /plan 1500 then /plan 500 = 2000)."""
+        return self.month_summary().total
+
     def month_done(self) -> bool:
-        return self.ledger.monthly_plan_executed(datetime.now().strftime("%Y-%m"))
+        return self.month_deployed() >= self.strategy.monthly_amount - 0.5
 
     # ── plans ──────────────────────────────────────────────────────────
     def plan(self, amount: float | None = None) -> tuple[Plan, Snapshot]:

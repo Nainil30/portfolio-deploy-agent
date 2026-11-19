@@ -6,7 +6,7 @@
     pda bot                     run the Telegram bot (long polling)
     pda plan [--amount 3000]    this month's buy list
     pda extra 5000              deploy one-off cash
-    pda portfolio | drift | guardrails | goal | stress | history | undo
+    pda portfolio | drift | guardrails | goal | stress | deployed | history | undo
     pda import FILE             Fidelity CSV or holdings.yaml
     pda bought VTI 500 [--price 612.4] [--shares]
     pda set monthly 3000        change monthly amount / goal / day / return
@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--amount", type=float)
     se = sub.add_parser("extra", help="deploy one-off cash")
     se.add_argument("amount", type=float)
-    for name in ("portfolio", "drift", "guardrails", "goal", "stress", "history", "undo", "send-plan", "validate"):
+    for name in ("portfolio", "drift", "guardrails", "goal", "stress", "deployed", "history", "undo", "send-plan", "validate"):
         sub.add_parser(name)
     si = sub.add_parser("import", help="import holdings (Fidelity CSV or YAML)")
     si.add_argument("file", type=Path)
@@ -163,7 +163,7 @@ def dispatch(args: argparse.Namespace, svc: Service) -> int:
         run_bot(svc)
     elif args.cmd == "plan":
         plan, snap = svc.plan(args.amount)
-        out(fmt.fmt_plan(plan, snap, svc.month_done()))
+        out(fmt.fmt_plan(plan, snap, svc.month_done(), svc.month_deployed(), s.monthly_amount))
         print(f"\n(plan #{plan.id}: record it from Telegram, or `pda bought` each line)")
     elif args.cmd == "extra":
         plan, snap = svc.extra(args.amount)
@@ -181,6 +181,8 @@ def dispatch(args: argparse.Namespace, svc: Service) -> int:
     elif args.cmd == "stress":
         snap = svc.snapshot()
         out(fmt.fmt_stress(snap, svc.stress(snap), s.monthly_amount))
+    elif args.cmd == "deployed":
+        out(fmt.fmt_deployed(svc.month_summary()))
     elif args.cmd == "history":
         out(fmt.fmt_history(svc.history(30)))
     elif args.cmd == "undo":

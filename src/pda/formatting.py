@@ -11,7 +11,7 @@ from pda.insights import Drawdown, Projection, StressResult
 from pda.ledger import Tx
 from pda.models import Plan, RuleCheck, Snapshot
 from pda.money import money
-from pda.service import Recorded
+from pda.service import MonthSummary, Recorded
 
 DISCLAIMER = "<i>Personal planning tool, not financial advice.</i>"
 BUCKET_NAMES = {
@@ -46,11 +46,15 @@ def bar(actual: float, target: float, width: int = 10) -> str:
 
 
 # ── plans ──────────────────────────────────────────────────────────────
-def fmt_plan(plan: Plan, snap: Snapshot, already_done: bool = False) -> str:
+def fmt_plan(plan: Plan, snap: Snapshot, already_done: bool = False,
+             deployed: float = 0.0, monthly: float | None = None) -> str:
     title = "🗓 <b>Monthly buy list</b>" if plan.kind == "monthly" else "💵 <b>Extra-cash buy list</b>"
     out = [f"{title}: {money(plan.amount)}", f"Portfolio: {money(snap.total_value)}", ""]
     if already_done and plan.kind == "monthly":
         out.append("✅ <i>You already recorded this month's buys. This is a preview.</i>\n")
+    elif plan.kind == "monthly" and monthly and deployed > 0:
+        out.append(f"📆 <i>So far this month: {money(deployed)} of {money(monthly)} deployed, "
+                   f"{money(max(monthly - deployed, 0))} to go.</i>\n")
     rows = []
     for ln in plan.lines:
         shares = f"≈{ln.est_shares:.3f} sh" if ln.est_shares else "no price"
@@ -180,6 +184,26 @@ def fmt_history(txs: list[Tx]) -> str:
     return "🧾 <b>Recent activity</b>\n<pre>" + esc("\n".join(rows)) + "</pre>"
 
 
+def fmt_deployed(m: MonthSummary) -> str:
+    label = date.fromisoformat(m.month + "-01").strftime("%B %Y")
+    pct = m.total / m.target * 100 if m.target else 0
+    out = [f"📆 <b>Deployed in {label}</b>",
+           f"{bar(m.total, m.target)} {money(m.total)} of {money(m.target)} ({pct:.0f}%)"]
+    if m.total >= m.target - 0.5:
+        extra = m.total - m.target
+        out.append("✅ This month is done." + (f" {money(extra)} above your monthly amount." if extra > 0.5 else ""))
+    else:
+        out.append(f"{money(m.remaining)} to go. Get the next slice with /plan {m.remaining:.0f}")
+    if not m.entries:
+        out.append("\nNothing recorded yet this month.")
+        return "\n".join(out)
+    rows = [f"{date.fromisoformat(e.day).strftime('%b %d')}  {e.source:<6}{money(e.amount):>9}" for e in m.entries]
+    out += ["", "<b>Buys</b>", "<pre>" + esc("\n".join(rows)) + "</pre>"]
+    top = sorted(m.by_ticker.items(), key=lambda kv: -kv[1])
+    out += ["<b>By ticker</b>", "<pre>" + esc("\n".join(f"{t:<6}{money(a):>9}" for t, a in top)) + "</pre>"]
+    return "\n".join(out)
+
+
 def fmt_undo(txs: list[Tx]) -> str:
     if not txs:
         return "Nothing to undo."
@@ -224,7 +248,7 @@ HELP = """🤖 <b>Portfolio Deploy Agent</b>
 3. Tap <b>✅ I bought these</b>. Holdings update automatically.
 
 <b>Commands</b>
-/plan [amount]: this month's buy list (e.g. /plan 3000)
+/plan [amount]: this month's buy list, or one week's slice (e.g. /plan 500)
 /extra 5000: deploy one-off cash into the biggest gaps
 /portfolio: value, buckets, goal progress
 /drift: every ticker vs target
@@ -232,6 +256,7 @@ HELP = """🤖 <b>Portfolio Deploy Agent</b>
 /goal: when you hit your money goal
 /stress: bad-year scenarios
 /bought VTI 500 [@ 612.40]: record a buy (amount). Add "sh" for shares: /bought NVDA 2 sh
+/deployed: how much you've put in this month vs your monthly amount
 /history · /undo
 /settings: your plan · /set monthly 3000 · /set goal 250k
 /import: send a positions CSV or holdings.yaml
